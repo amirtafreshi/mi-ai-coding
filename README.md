@@ -1,7 +1,7 @@
 # MI AI Coding Platform
 
-[![CI](https://github.com/yourusername/mi-ai-coding/actions/workflows/ci.yml/badge.svg)](https://github.com/yourusername/mi-ai-coding/actions/workflows/ci.yml)
-[![Release](https://github.com/yourusername/mi-ai-coding/actions/workflows/release.yml/badge.svg)](https://github.com/yourusername/mi-ai-coding/actions/workflows/release.yml)
+[![CI](https://github.com/amirtafreshi/mi-ai-coding/actions/workflows/ci.yml/badge.svg)](https://github.com/amirtafreshi/mi-ai-coding/actions/workflows/ci.yml)
+[![Release](https://github.com/amirtafreshi/mi-ai-coding/actions/workflows/release.yml/badge.svg)](https://github.com/amirtafreshi/mi-ai-coding/actions/workflows/release.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)](https://www.typescriptlang.org/)
@@ -63,7 +63,7 @@ A production-ready, mobile-responsive AI Coding Platform built with Next.js 15, 
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/yourusername/mi-ai-coding.git
+git clone https://github.com/amirtafreshi/mi-ai-coding.git
 cd mi-ai-coding
 
 # 2. Install dependencies
@@ -242,7 +242,7 @@ npm start
 ### Deploy to Server
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/mi-ai-coding.git
+git clone https://github.com/amirtafreshi/mi-ai-coding.git
 cd mi-ai-coding
 
 # Run setup script
@@ -333,7 +333,7 @@ MIT License - see LICENSE file for details
 ## Support
 
 For issues and questions:
-- Open an issue on [GitHub](https://github.com/yourusername/mi-ai-coding/issues)
+- Open an issue on [GitHub](https://github.com/amirtafreshi/mi-ai-coding/issues)
 - Check existing documentation in `PROJECT.md`
 - Review agent guides in `agents/` directory
 

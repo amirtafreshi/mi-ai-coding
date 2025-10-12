@@ -5,12 +5,12 @@
   "main": "server.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/mi-ai-coding.git"
+    "url": "https://github.com/amirtafreshi/mi-ai-coding.git"
   },
   "bugs": {
-    "url": "https://github.com/yourusername/mi-ai-coding/issues"
+    "url": "https://github.com/amirtafreshi/mi-ai-coding/issues"
   },
-  "homepage": "https://github.com/yourusername/mi-ai-coding#readme",
+  "homepage": "https://github.com/amirtafreshi/mi-ai-coding#readme",
   "scripts": {
     "dev": "node server.js",
     "build": "prisma generate && next build",

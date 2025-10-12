@@ -119,8 +119,8 @@ When adding new documentation:
 
 ## Additional Resources
 
-- **[GitHub Repository](https://github.com/yourusername/mi-ai-coding)** - Source code
-- **[Issue Tracker](https://github.com/yourusername/mi-ai-coding/issues)** - Bug reports and feature requests
+- **[GitHub Repository](https://github.com/amirtafreshi/mi-ai-coding)** - Source code
+- **[Issue Tracker](https://github.com/amirtafreshi/mi-ai-coding/issues)** - Bug reports and feature requests
 - **[Changelog](../CHANGELOG.md)** - Version history
 - **[License](../LICENSE)** - MIT License
 
