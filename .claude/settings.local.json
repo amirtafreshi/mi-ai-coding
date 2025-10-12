@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(sudo apt-get:*)",
+      "Bash(sudo systemctl start:*)",
+      "Bash(npx prisma:*)",
+      "Bash(sudo chown:*)",
+      "Bash(for:*)",
+      "Bash(head:*)",
+      "Bash(done)",
+      "Bash(claude mcp add github:*)",
+      "Bash(claude mcp add filesystem:*)",
+      "Bash(claude mcp add sequential-thinking:*)",
+      "WebSearch",
+      "Bash(claude mcp add:*)",
+      "Bash(claude mcp:*)",
+      "Bash(chmod:*)",
+      "Bash(sudo:*)",
+      "Bash(/home/master/projects/mi-ai-coding/scripts/check-external-access.sh:*)",
+      "Bash(cat:*)",
+      "Bash(/home/master/projects/mi-ai-coding/scripts/cleanup-old-screenshots.sh:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

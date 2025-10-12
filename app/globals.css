@@ -1,0 +1,179 @@
+@import "tailwindcss";
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 214, 219, 220;
+  --background-end-rgb: 255, 255, 255;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --foreground-rgb: 255, 255, 255;
+    --background-start-rgb: 0, 0, 0;
+    --background-end-rgb: 0, 0, 0;
+  }
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+      to bottom,
+      transparent,
+      rgb(var(--background-end-rgb))
+    )
+    rgb(var(--background-start-rgb));
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* Custom scrollbar styles */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* VNC viewer container */
+.vnc-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.vnc-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Activity log styles */
+.activity-log {
+  font-family: 'Monaco', 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.activity-log-entry {
+  padding: 4px 8px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.activity-log-entry.info {
+  color: #1677ff;
+}
+
+.activity-log-entry.warning {
+  color: #faad14;
+}
+
+.activity-log-entry.error {
+  color: #ff4d4f;
+}
+
+/* Code editor styles */
+.monaco-editor-container {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Resizable panels */
+.panel-resize-handle {
+  background-color: #e8e8e8;
+  transition: background-color 0.2s;
+}
+
+.panel-resize-handle:hover,
+.panel-resize-handle:active {
+  background-color: #1677ff;
+}
+
+/* File explorer tree fixes */
+.ant-tree-node-content-wrapper {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  flex-wrap: nowrap !important;
+}
+
+.ant-tree-title {
+  display: inline !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  font-size: 13px !important;
+}
+
+.ant-tree-iconEle {
+  display: inline-flex !important;
+  align-items: center !important;
+  flex-shrink: 0 !important;
+}
+
+/* Markdown Editor Styles */
+.w-md-editor {
+  box-shadow: none !important;
+  border: 1px solid #d9d9d9 !important;
+}
+
+.w-md-editor-toolbar {
+  background: #fafafa !important;
+  border-bottom: 1px solid #d9d9d9 !important;
+}
+
+.w-md-editor-content {
+  background: #fff !important;
+}
+
+.w-md-editor-text-pre,
+.w-md-editor-text-input,
+.w-md-editor-text {
+  font-family: 'Monaco', 'Courier New', monospace !important;
+  font-size: 14px !important;
+  line-height: 1.6 !important;
+}
+
+.wmde-markdown {
+  background: #fff !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+}
+
+/* Ensure MDEditor is visible */
+.w-md-editor-show-live {
+  display: flex !important;
+}
+
+.w-md-editor-show-live > .w-md-editor-input,
+.w-md-editor-show-live > .w-md-editor-preview {
+  width: 50% !important;
+  display: block !important;
+}
+
+/* Mobile responsive utilities */
+@media (max-width: 768px) {
+  .mobile-hidden {
+    display: none !important;
+  }
+
+  .mobile-full-width {
+    width: 100% !important;
+  }
+}

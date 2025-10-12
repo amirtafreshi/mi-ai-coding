@@ -1,0 +1,42 @@
+╔═══════════════════════════════════════════════════════════════════╗
+║          VNC INFRASTRUCTURE QUICK REFERENCE                       ║
+╠═══════════════════════════════════════════════════════════════════╣
+║                                                                   ║
+║ WEB ACCESS URLS:                                                  ║
+║   Display :99 (Playwright): http://localhost:6080                ║
+║   Display :98 (Terminal):   http://localhost:6081                ║
+║                                                                   ║
+║ QUICK STATUS CHECK:                                               ║
+║   ./scripts/check-vnc-status.sh                                   ║
+║                                                                   ║
+║ UPGRADE RESOLUTION (requires sudo):                               ║
+║   sudo ./scripts/restart-vnc-1920x1080.sh                         ║
+║                                                                   ║
+║ START VNC SERVERS:                                                ║
+║   ./scripts/start-vnc.sh                                          ║
+║                                                                   ║
+║ PLAYWRIGHT TESTING (CRITICAL):                                    ║
+║   DISPLAY=:99 npx playwright test                                 ║
+║   DISPLAY=:99 npx playwright test --ui                            ║
+║   DISPLAY=:99 npx playwright test --headed                        ║
+║                                                                   ║
+║ VERIFY X11 CONNECTION:                                            ║
+║   DISPLAY=:99 xwininfo -root                                      ║
+║   DISPLAY=:98 xwininfo -root                                      ║
+║                                                                   ║
+║ CHECK PROCESSES:                                                  ║
+║   ps aux | grep -E "(Xvfb|x11vnc)" | grep -v grep                ║
+║                                                                   ║
+║ CHECK PORTS:                                                      ║
+║   ss -tlnp | grep -E '6080|6081'                                  ║
+║                                                                   ║
+║ CHECK RESOLUTIONS:                                                ║
+║   DISPLAY=:98 xdpyinfo | grep dimensions                          ║
+║   DISPLAY=:99 xdpyinfo | grep dimensions                          ║
+║                                                                   ║
+║ CURRENT STATUS:                                                   ║
+║   VNC Servers:  RUNNING                                           ║
+║   Ports:        6080, 6081 ACCESSIBLE                             ║
+║   Resolution:   1024x768 (NEEDS UPGRADE to 1920x1080)            ║
+║                                                                   ║
+╚═══════════════════════════════════════════════════════════════════╝
