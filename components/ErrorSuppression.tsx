@@ -57,6 +57,14 @@ export function ErrorSuppression() {
         return
       }
 
+      // Suppress VNC RFB disconnection errors (harmless cleanup warnings)
+      if (
+        errorString.includes('Tried changing state of a disconnected RFB object') ||
+        errorString.includes('RFB object')
+      ) {
+        return
+      }
+
       // Pass through all other errors
       originalConsoleError.apply(console, args)
     }

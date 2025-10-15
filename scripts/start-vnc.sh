@@ -222,6 +222,7 @@ start_x11vnc() {
 
 start_fluxbox() {
   local display=$1
+  local startup_script=""
 
   print_step "Starting window manager (fluxbox) on display $display..."
 
@@ -231,9 +232,23 @@ start_fluxbox() {
     return 0
   fi
 
-  # Start fluxbox
-  DISPLAY=$display fluxbox &
-  FLUXBOX_PID=$!
+  # Select appropriate startup script based on display
+  if [ "$display" = ":98" ]; then
+    startup_script="/home/master/.fluxbox/startup-98"
+  elif [ "$display" = ":99" ]; then
+    startup_script="/home/master/.fluxbox/startup-99"
+  fi
+
+  # Start fluxbox with custom startup script if available
+  if [ -n "$startup_script" ] && [ -f "$startup_script" ]; then
+    print_info "Using custom startup script: $startup_script"
+    DISPLAY=$display "$startup_script" &
+    FLUXBOX_PID=$!
+  else
+    print_info "No custom startup script found, using default fluxbox"
+    DISPLAY=$display fluxbox &
+    FLUXBOX_PID=$!
+  fi
 
   # Wait for fluxbox to start
   sleep 1

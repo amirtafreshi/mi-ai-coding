@@ -151,7 +151,9 @@ export function AgentDeployModal({
           </label>
           {loadingProjects ? (
             <div className="text-center py-4">
-              <Spin tip="Loading projects..." />
+              <Spin tip="Loading projects...">
+                <div style={{ minHeight: '50px' }} />
+              </Spin>
             </div>
           ) : (
             <Select

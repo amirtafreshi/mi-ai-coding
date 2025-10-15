@@ -57,7 +57,21 @@ A production-ready, mobile-responsive AI Coding Platform built with Next.js 15, 
 
 ## Quick Start
 
-**For detailed installation instructions**, see **[INSTALL.md](INSTALL.md)**.
+### ⚡ One-Command Installation
+
+```bash
+git clone https://github.com/amirtafreshi/mi-ai-coding.git
+cd mi-ai-coding
+sudo ./scripts/install-all.sh
+```
+
+**Installation time: ~10 minutes** | Installs Node.js, PostgreSQL, VNC servers, and all dependencies.
+
+### 📚 Installation Guides
+
+- **[QUICKSTART.md](QUICKSTART.md)** - Get started in 10 minutes
+- **[INSTALLATION.md](INSTALLATION.md)** - Complete installation guide
+- **[DOMAIN-SETUP.md](DOMAIN-SETUP.md)** - Configure domain and SSL
 
 ### Quick Setup (5 minutes)
 
