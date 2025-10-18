@@ -18,12 +18,14 @@ export async function GET(request: NextRequest) {
       .map(entry => ({
         name: entry.name,
         path: join(projectsPath, entry.name),
-        agentPath: join(projectsPath, entry.name, '.claude', 'agents')
+        agentPath: join(projectsPath, entry.name, '.claude', 'agents'),
+        skillPath: join(projectsPath, entry.name, '.claude', 'skills')
       }))
 
     return NextResponse.json({
       projects,
-      masterAgentsPath: '/home/master/projects/agents'
+      masterAgentsPath: '/home/master/projects/agents',
+      masterSkillsPath: '/home/master/projects/skills'
     })
   } catch (error) {
     console.error('Error listing projects:', error)
