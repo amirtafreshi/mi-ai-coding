@@ -152,7 +152,7 @@ Clone the repository and run the automated setup script:
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/mi-ai-coding.git
+git clone https://github.com/amirtafreshi/mi-ai-coding.git
 cd mi-ai-coding
 
 # Run automated setup (installs dependencies, configures environment, builds app)
@@ -169,7 +169,24 @@ The setup script will:
 7. Initialize database (if you confirm)
 8. Build the application
 
-### After Quick Start
+### After Setup - Post-Installation Configuration
+
+Run the post-installation script to complete setup:
+
+```bash
+# Run post-install script (creates directories, seeds database, configures firewall)
+./scripts/post-install.sh
+```
+
+The post-install script will:
+1. Create required directory structure (`/home/master/projects`)
+2. Create symlink to agents folder
+3. Seed database with default users (admin@example.com, user@example.com)
+4. Configure firewall (allows port 3000)
+5. Create sample project
+6. Verify installation
+
+### Start the Application
 
 ```bash
 # Start VNC servers for visual debugging
@@ -182,7 +199,13 @@ npm run dev
 npm start
 ```
 
-Access the application at `http://localhost:3000`
+**Access the application:**
+- Local: `http://localhost:3000`
+- External: `http://YOUR_SERVER_IP:3000`
+
+**Default Login Credentials:**
+- Admin: `admin@example.com` / `admin123`
+- User: `user@example.com` / `user123`
 
 ---
 
@@ -198,11 +221,17 @@ mkdir -p ~/projects
 cd ~/projects
 
 # Clone repository
-git clone https://github.com/yourusername/mi-ai-coding.git
+git clone https://github.com/amirtafreshi/mi-ai-coding.git
 cd mi-ai-coding
 
 # Verify files
 ls -la
+
+# Create required directory structure
+mkdir -p /home/master/projects
+
+# Create symlink to agents folder (IMPORTANT: App expects agents at /home/master/projects/agents)
+ln -s $(pwd)/agents /home/master/projects/agents
 ```
 
 ### Step 2: Install Node.js Dependencies
@@ -254,7 +283,7 @@ Inside psql:
 -- Create database
 CREATE DATABASE mi_ai_coding;
 
--- Create user with password
+-- Create user with password (avoid special characters like !, @, #, $, % in password)
 CREATE USER your_username WITH PASSWORD 'your_secure_password';
 
 -- Grant privileges
@@ -278,6 +307,15 @@ Update DATABASE_URL in .env:
 DATABASE_URL="postgresql://your_username:your_secure_password@localhost:5432/mi_ai_coding?schema=public"
 ```
 
+**Database Password Guidelines:**
+- **Recommended**: Use alphanumeric passwords with uppercase, lowercase, and numbers (e.g., `SecurePass123`)
+- **Avoid**: Special characters like `!`, `@`, `#`, `$`, `%` that may cause URL encoding issues
+- **If using special characters**: URL-encode them in the connection string:
+  - `!` becomes `%21`
+  - `@` becomes `%40`
+  - `#` becomes `%23`
+  - Example: `SecurePass123!` → `DATABASE_URL="postgresql://user:SecurePass123%21@localhost:5432/db"`
+
 ### Step 5: Initialize Database Schema
 
 ```bash
@@ -290,10 +328,17 @@ npx prisma db push
 # Or create migration (production-ready)
 npx prisma migrate dev --name init
 
+# IMPORTANT: Seed database with default users
+npm run db:seed
+
 # Verify database
 npx prisma studio
 # Opens browser at http://localhost:5555
 ```
+
+**Default Login Credentials (created by seed script):**
+- Admin: `admin@example.com` / `admin123`
+- User: `user@example.com` / `user123`
 
 ### Step 6: Build Application
 
@@ -305,7 +350,37 @@ npm run build
 ls -la .next/
 ```
 
-### Step 7: Start VNC Servers
+### Step 7: Configure Firewall (Ubuntu/Debian)
+
+**CRITICAL**: Configure firewall to allow access to the application while keeping internal services secure.
+
+```bash
+# Enable UFW (if not already enabled)
+sudo ufw enable
+
+# Allow SSH (IMPORTANT: Do this first to avoid locking yourself out)
+sudo ufw allow 22/tcp
+
+# Allow application port
+sudo ufw allow 3000/tcp
+
+# Check firewall status
+sudo ufw status
+```
+
+**Security Best Practices:**
+- **DO expose port 3000**: Main application access
+- **DO NOT expose port 3001**: WebSocket server (accessed internally through port 3000)
+- **DO NOT expose port 5432**: PostgreSQL (should only accept localhost connections)
+- **DO NOT expose ports 6080/6081**: VNC servers (accessed through port 3000 via WebSocket proxy)
+
+If using a reverse proxy (Nginx/Apache), expose ports 80/443 instead:
+```bash
+sudo ufw allow 80/tcp   # HTTP
+sudo ufw allow 443/tcp  # HTTPS
+```
+
+### Step 8: Start VNC Servers
 
 ```bash
 # Make script executable (if needed)

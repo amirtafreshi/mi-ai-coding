@@ -4,138 +4,99 @@ import bcrypt from 'bcryptjs'
 const prisma = new PrismaClient()
 
 async function main() {
-  console.log('Starting database seed...')
-
-  // Hash the admin password
-  const hashedPassword = await bcrypt.hash('admin123', 10)
+  console.log('🌱 Seeding database...')
 
   // Create admin user
-  const adminUser = await prisma.user.upsert({
+  const adminPassword = await bcrypt.hash('admin123', 10)
+  const admin = await prisma.user.upsert({
     where: { email: 'admin@example.com' },
     update: {},
     create: {
       email: 'admin@example.com',
+      password: adminPassword,
       name: 'Admin User',
-      password: hashedPassword,
-      role: 'admin',
-    },
+      role: 'admin'
+    }
   })
+  console.log(`✅ Admin user: ${admin.email}`)
 
-  console.log('Admin user created:', adminUser.email)
-
-  // Create test users for E2E testing
-  const testUserPassword = await bcrypt.hash('password123', 10)
-  const testUser = await prisma.user.upsert({
-    where: { email: 'test@example.com' },
+  // Create test user
+  const userPassword = await bcrypt.hash('user123', 10)
+  const user = await prisma.user.upsert({
+    where: { email: 'user@example.com' },
     update: {},
     create: {
-      email: 'test@example.com',
+      email: 'user@example.com',
+      password: userPassword,
       name: 'Test User',
-      password: testUserPassword,
-      role: 'user',
-    },
+      role: 'user'
+    }
   })
+  console.log(`✅ Test user: ${user.email}`)
 
-  const devPassword = await bcrypt.hash('dev123', 10)
-  const devUser = await prisma.user.upsert({
-    where: { email: 'dev@example.com' },
-    update: {},
-    create: {
-      email: 'dev@example.com',
-      name: 'Developer User',
-      password: devPassword,
-      role: 'developer',
-    },
-  })
-
-  console.log('Test users created:', testUser.email, devUser.email)
-
-  // Create VNC configurations
-  const vncConfigs = await Promise.all([
-    prisma.vNCConfig.upsert({
-      where: { display: ':98' },
-      update: {},
-      create: {
-        display: ':98',
-        port: 6081,
-        resolution: '1024x768',
-        isActive: true,
+  // Create sample activity logs
+  await prisma.activityLog.createMany({
+    data: [
+      {
+        userId: admin.id,
+        agent: 'system',
+        action: 'database_initialized',
+        details: 'Database seeded with default users',
+        level: 'info'
       },
-    }),
-    prisma.vNCConfig.upsert({
-      where: { display: ':99' },
-      update: {},
-      create: {
-        display: ':99',
-        port: 6080,
-        resolution: '1024x768',
-        isActive: true,
-      },
-    }),
-  ])
-
-  console.log('VNC configurations created:', vncConfigs.length)
-
-  // Create initial activity log
-  const activityLog = await prisma.activityLog.create({
-    data: {
-      userId: adminUser.id,
-      agent: 'database-seed',
-      action: 'database_initialized',
-      details: 'Database seeded with admin user and VNC configurations',
-      level: 'info',
-    },
+      {
+        userId: admin.id,
+        agent: 'system',
+        action: 'welcome',
+        details: 'Welcome to MI AI Coding Platform!',
+        level: 'info'
+      }
+    ],
+    skipDuplicates: true
   })
+  console.log('✅ Sample activity logs created')
 
-  console.log('Initial activity log created:', activityLog.id)
-
-  // Create example folder structure
-  const rootFolder = await prisma.folder.upsert({
-    where: { path: '/' },
+  // Create default VNC configurations
+  await prisma.vNCConfig.upsert({
+    where: { display: ':98' },
     update: {},
     create: {
-      path: '/',
-      name: 'root',
-      parentId: null,
-    },
+      display: ':98',
+      port: 6081,
+      resolution: '1280x720',
+      isActive: true
+    }
   })
+  console.log('✅ VNC config for display :98 (Terminal)')
 
-  const projectsFolder = await prisma.folder.upsert({
-    where: { path: '/projects' },
+  await prisma.vNCConfig.upsert({
+    where: { display: ':99' },
     update: {},
     create: {
-      path: '/projects',
-      name: 'projects',
-      parentId: rootFolder.id,
-    },
+      display: ':99',
+      port: 6080,
+      resolution: '1280x720',
+      isActive: true
+    }
   })
+  console.log('✅ VNC config for display :99 (Playwright)')
 
-  console.log('Example folder structure created')
-
-  // Create example file
-  const exampleFile = await prisma.file.upsert({
-    where: { path: '/projects/README.md' },
-    update: {},
-    create: {
-      path: '/projects/README.md',
-      name: 'README.md',
-      content: '# Welcome to MI AI Coding Platform\n\nThis is an example file in your projects folder.\n',
-      size: 95,
-      mimeType: 'text/markdown',
-    },
-  })
-
-  console.log('Example file created:', exampleFile.name)
-
-  console.log('Database seed completed successfully!')
+  console.log('')
+  console.log('========================================')
+  console.log('✅ Database seeded successfully!')
+  console.log('========================================')
+  console.log('')
+  console.log('Default login credentials:')
+  console.log('  Admin: admin@example.com / admin123')
+  console.log('  User:  user@example.com / user123')
+  console.log('')
 }
 
 main()
-  .then(async () => {
-    await prisma.$disconnect()
-  })
-  .catch(async (e) => {
-    console.error('Error seeding database:', e)
-    await prisma.$disconnect()
+  .catch((e) => {
+    console.error('❌ Error seeding database:', e)
     process.exit(1)
+  })
+  .finally(async () => {
+    await prisma.$disconnect()
   })

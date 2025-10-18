@@ -85,20 +85,26 @@ npm install
 
 # 3. Configure environment
 cp .env.example .env
-# Edit .env with your database credentials
+# Edit .env with your database credentials (avoid special characters in password)
 
 # 4. Initialize database
 npm run db:generate
 npm run db:push
+npm run db:seed  # Creates default admin and user accounts
 
-# 5. Start VNC servers (optional, for VNC features)
+# 5. Post-installation setup (creates directories, configures firewall)
+./scripts/post-install.sh
+
+# 6. Start VNC servers (optional, for VNC features)
 ./scripts/start-vnc.sh
 
-# 6. Run development server
+# 7. Run development server
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+**Access the application:**
+- Local: [http://localhost:3000](http://localhost:3000)
+- External: http://YOUR_SERVER_IP:3000
 
 **Need help?** See [INSTALL.md](INSTALL.md) for complete step-by-step instructions.
 
