@@ -18,11 +18,16 @@ import {
   MoreOutlined,
   RocketOutlined,
   ArrowUpOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons'
 import { AgentDeployModal } from '@/components/agents/AgentDeployModal'
 import { CreateAgentModal } from '@/components/agents/CreateAgentModal'
 import { AgentEditorModal } from '@/components/agents/AgentEditorModal'
 import { AgentSelectorModal } from '@/components/agents/AgentSelectorModal'
+import { SkillDeployModal } from '@/components/skills/SkillDeployModal'
+import { CreateSkillModal } from '@/components/skills/CreateSkillModal'
+import { SkillEditorModal } from '@/components/skills/SkillEditorModal'
+import { SkillSelectorModal } from '@/components/skills/SkillSelectorModal'
 
 interface FileNode {
   id: string
@@ -39,6 +44,7 @@ const QUICK_ACCESS = [
   { label: 'Root', value: '/', icon: <HomeOutlined /> },
   { label: 'Projects', value: '/home/master/projects', icon: <FolderFilled /> },
   { label: 'Agents', value: 'AGENT_SELECTOR', icon: <CodeOutlined /> },
+  { label: 'Skills', value: 'SKILL_SELECTOR', icon: <ThunderboltOutlined /> },
 ]
 
 export function FileTree() {
@@ -61,6 +67,18 @@ export function FileTree() {
   const [editorInitialContent, setEditorInitialContent] = useState('')
   const [editorSkipAI, setEditorSkipAI] = useState(false)
   const [isAgentSelectorOpen, setIsAgentSelectorOpen] = useState(false)
+
+  // Skill states
+  const [isSkillSelectorOpen, setIsSkillSelectorOpen] = useState(false)
+  const [isCreateSkillModalOpen, setIsCreateSkillModalOpen] = useState(false)
+  const [isSkillEditorModalOpen, setIsSkillEditorModalOpen] = useState(false)
+  const [isSkillDeployModalOpen, setIsSkillDeployModalOpen] = useState(false)
+  const [deploySkillFile, setDeploySkillFile] = useState<string>('')
+  const [editorSkillName, setEditorSkillName] = useState('')
+  const [editorSkillDescription, setEditorSkillDescription] = useState('')
+  const [editorSkillFileName, setEditorSkillFileName] = useState('')
+  const [editorSkillInitialContent, setEditorSkillInitialContent] = useState('')
+  const [editorSkillSkipAI, setEditorSkillSkipAI] = useState(false)
 
   // Hydrate client-side path from localStorage after mount
   useEffect(() => {
@@ -131,6 +149,10 @@ export function FileTree() {
       const isInAgentsFolder = basePath.includes('/agents')
       const isAgentFile = isInAgentsFolder && item.name.endsWith('.md') && !isDirectory
 
+      // Detect skill files: SKILL.md files in /skills/ directory or its subdirectories
+      const isInSkillsFolder = basePath.includes('/skills')
+      const isSkillFile = isInSkillsFolder && item.name === 'SKILL.md' && !isDirectory
+
       const menuItems: MenuProps['items'] = [
         {
           key: 'delete',
@@ -171,6 +193,21 @@ export function FileTree() {
                       setIsDeployModalOpen(true)
                     }}
                     title="Deploy Agent"
+                  />
+                )}
+                {isSkillFile && (
+                  <Button
+                    type="primary"
+                    size="small"
+                    icon={<ThunderboltOutlined />}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      // Extract skill folder name from path
+                      const skillFolderName = basePath.split('/').pop() || ''
+                      setDeploySkillFile(skillFolderName)
+                      setIsSkillDeployModalOpen(true)
+                    }}
+                    title="Deploy Skill"
                   />
                 )}
                 <Dropdown
@@ -352,6 +389,9 @@ export function FileTree() {
     if (value === 'AGENT_SELECTOR') {
       // Open the agent selector modal instead of navigating
       setIsAgentSelectorOpen(true)
+    } else if (value === 'SKILL_SELECTOR') {
+      // Open the skill selector modal instead of navigating
+      setIsSkillSelectorOpen(true)
     } else {
       setCurrentPath(value)
       setExpandedKeys([])
@@ -370,6 +410,11 @@ export function FileTree() {
     setExpandedKeys([])
   }
 
+  const handleSkillSelectorPath = (path: string) => {
+    setCurrentPath(path)
+    setExpandedKeys([])
+  }
+
   return (
     <div className="h-full flex flex-col">
       {/* Quick Access */}
@@ -377,11 +422,15 @@ export function FileTree() {
         <Segmented
           block
           size="small"
-          value={currentPath.includes('/agents') ? 'AGENT_SELECTOR' : currentPath}
+          value={
+            currentPath.includes('/agents') ? 'AGENT_SELECTOR' :
+            currentPath.includes('/skills') ? 'SKILL_SELECTOR' :
+            currentPath
+          }
           onChange={(value) => handleQuickAccess(value as string)}
           options={QUICK_ACCESS}
           onClick={(e) => {
-            // Check if clicking on the Agents option
+            // Check if clicking on the Agents or Skills option
             const target = e.target as HTMLElement
             const segmentItem = target.closest('.ant-segmented-item')
             if (segmentItem) {
@@ -392,6 +441,11 @@ export function FileTree() {
                 // Always open modal when clicking Agents, even if already selected
                 e.preventDefault()
                 setIsAgentSelectorOpen(true)
+              } else if (itemValue === 'SKILL_SELECTOR' ||
+                  (target.textContent && target.textContent.includes('Skills'))) {
+                // Always open modal when clicking Skills, even if already selected
+                e.preventDefault()
+                setIsSkillSelectorOpen(true)
               }
             }
           }}
@@ -425,6 +479,17 @@ export function FileTree() {
             title="Create New Agent"
           >
             Agent
+          </Button>
+        ) : (currentPath === '/home/master/projects/skills' ||
+          currentPath.includes('/.claude/skills')) ? (
+          <Button
+            size="small"
+            type="primary"
+            icon={<ThunderboltOutlined />}
+            onClick={() => setIsCreateSkillModalOpen(true)}
+            title="Create New Skill"
+          >
+            Skill
           </Button>
         ) : (
           <Button
@@ -573,6 +638,74 @@ export function FileTree() {
         open={isAgentSelectorOpen}
         onClose={() => setIsAgentSelectorOpen(false)}
         onSelectPath={handleAgentSelectorPath}
+      />
+
+      {/* Skill Deploy Modal */}
+      <SkillDeployModal
+        open={isSkillDeployModalOpen}
+        skillFileName={deploySkillFile}
+        onClose={() => {
+          setIsSkillDeployModalOpen(false)
+          setDeploySkillFile('')
+        }}
+        onSuccess={() => {
+          message.success('Skill deployed successfully!')
+        }}
+      />
+
+      {/* Create Skill Modal */}
+      <CreateSkillModal
+        open={isCreateSkillModalOpen}
+        onClose={() => setIsCreateSkillModalOpen(false)}
+        onPasteSaved={() => {
+          // Paste mode saved directly - just refresh file list
+          loadFiles(currentPath)
+        }}
+        onSuccess={(fileName, content, skipAIGeneration) => {
+          // AI or Import mode - open editor
+          setEditorSkillFileName(fileName)
+          setEditorSkillInitialContent(content)
+          setEditorSkillSkipAI(skipAIGeneration)
+
+          // Extract name and description from content
+          const lines = content.split('\n')
+          const name = lines[0]?.replace(/^#\s*/, '') || 'New Skill'
+          const description = lines.slice(1).join('\n').trim() || 'Skill description'
+
+          setEditorSkillName(name)
+          setEditorSkillDescription(description)
+
+          setIsCreateSkillModalOpen(false)
+          setIsSkillEditorModalOpen(true)
+        }}
+      />
+
+      {/* Skill Editor Modal */}
+      <SkillEditorModal
+        open={isSkillEditorModalOpen}
+        fileName={editorSkillFileName}
+        initialContent={editorSkillInitialContent}
+        skillName={editorSkillName}
+        skillDescription={editorSkillDescription}
+        skipAIGeneration={editorSkillSkipAI}
+        onClose={() => {
+          setIsSkillEditorModalOpen(false)
+          setEditorSkillFileName('')
+          setEditorSkillInitialContent('')
+          setEditorSkillName('')
+          setEditorSkillDescription('')
+          setEditorSkillSkipAI(false)
+        }}
+        onSaveSuccess={() => {
+          loadFiles(currentPath)
+        }}
+      />
+
+      {/* Skill Selector Modal */}
+      <SkillSelectorModal
+        open={isSkillSelectorOpen}
+        onClose={() => setIsSkillSelectorOpen(false)}
+        onSelectPath={handleSkillSelectorPath}
       />
     </div>
   )
