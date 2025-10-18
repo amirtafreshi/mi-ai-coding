@@ -202,8 +202,8 @@ start_x11vnc() {
     return 0
   fi
 
-  # Start x11vnc
-  x11vnc -display $display -forever -shared -rfbport $port -nopw -listen 0.0.0.0 -bg -o /tmp/x11vnc-${display}.log
+  # Start x11vnc with quality level 0 (JPEG Q15) for instant encoding and compression level 9
+  x11vnc -display $display -forever -shared -rfbport $port -nopw -listen 0.0.0.0 -bg -o /tmp/x11vnc-${display}.log -quality 0 -compresslevel 9
 
   # Wait for x11vnc to start
   sleep 2
@@ -535,6 +535,19 @@ main() {
 
   # Verify status
   verify_vnc_status
+
+  echo ""
+
+  # Start websockify processes using PID-based management
+  print_header "Starting WebSocket Proxies (websockify)"
+  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  if [ -f "$SCRIPT_DIR/manage-websockify.sh" ]; then
+    print_info "Using PID-based websockify management to prevent duplicates"
+    "$SCRIPT_DIR/manage-websockify.sh" restart
+  else
+    print_warning "manage-websockify.sh not found, skipping websockify setup"
+    print_info "VNC servers are running but WebSocket access may not work"
+  fi
 
   # Display connection information
   print_header "VNC Servers Started Successfully"

@@ -28,7 +28,19 @@ else
   echo -e "${GREEN}✓${NC} Directory already exists: /home/master/projects"
 fi
 
-# 2. Create symlink to agents
+# 2. Create .claude/agents directory structure for all projects
+echo -e "${BLUE}▶${NC} Creating .claude/agents directory structure..."
+for project_dir in /home/master/projects/*/; do
+  if [ -d "$project_dir" ] && [ "$(basename "$project_dir")" != "agents" ]; then
+    mkdir -p "$project_dir/.claude/agents"
+    chown -R master:master "$project_dir/.claude" 2>/dev/null || true
+    chmod -R 755 "$project_dir/.claude" 2>/dev/null || true
+  fi
+done
+# Also create for sample project (will be created later)
+echo -e "${GREEN}✓${NC} .claude/agents directories created"
+
+# 3. Create symlink to agents
 echo -e "${BLUE}▶${NC} Creating symlink to agents folder..."
 if [ ! -L "/home/master/projects/agents" ]; then
   ln -s "$PROJECT_DIR/agents" /home/master/projects/agents
@@ -38,7 +50,7 @@ else
   echo -e "${GREEN}✓${NC} Symlink already exists"
 fi
 
-# 3. Seed database
+# 4. Seed database
 echo -e "${BLUE}▶${NC} Seeding database with default users..."
 cd "$PROJECT_DIR"
 if npm run db:seed; then
@@ -47,27 +59,45 @@ else
   echo -e "${RED}✗${NC} Database seeding failed. Please run manually: npm run db:seed"
 fi
 
-# 4. Configure firewall (only if UFW is available)
+# 5. Configure firewall (only if UFW is available)
 echo -e "${BLUE}▶${NC} Configuring firewall..."
 if command -v ufw &> /dev/null; then
   if sudo ufw status | grep -q "Status: active"; then
+    PORTS_OPENED=0
     if sudo ufw allow 3000/tcp &> /dev/null; then
-      echo -e "${GREEN}✓${NC} Firewall configured (port 3000 allowed)"
+      echo -e "${GREEN}✓${NC} Port 3000/tcp allowed (Next.js app)"
+      PORTS_OPENED=$((PORTS_OPENED + 1))
+    fi
+    if sudo ufw allow 3001/tcp &> /dev/null; then
+      echo -e "${GREEN}✓${NC} Port 3001/tcp allowed (WebSocket server)"
+      PORTS_OPENED=$((PORTS_OPENED + 1))
+    fi
+    if sudo ufw allow 6080/tcp &> /dev/null; then
+      echo -e "${GREEN}✓${NC} Port 6080/tcp allowed (VNC Playwright)"
+      PORTS_OPENED=$((PORTS_OPENED + 1))
+    fi
+    if sudo ufw allow 6081/tcp &> /dev/null; then
+      echo -e "${GREEN}✓${NC} Port 6081/tcp allowed (VNC Terminal)"
+      PORTS_OPENED=$((PORTS_OPENED + 1))
+    fi
+    if [ $PORTS_OPENED -gt 0 ]; then
+      echo -e "${GREEN}✓${NC} Firewall configured ($PORTS_OPENED ports opened)"
     else
       echo -e "${YELLOW}⚠${NC} Could not configure firewall (run with sudo if needed)"
     fi
   else
     echo -e "${YELLOW}⚠${NC} UFW is installed but not active. Skipping firewall configuration."
-    echo -e "   To enable: sudo ufw enable && sudo ufw allow 3000/tcp"
+    echo -e "   To enable: sudo ufw enable && sudo ufw allow 3000/tcp 3001/tcp 6080/tcp 6081/tcp"
   fi
 else
   echo -e "${YELLOW}⚠${NC} UFW not installed, skipping firewall configuration"
 fi
 
-# 5. Create sample project
+# 6. Create sample project
 echo -e "${BLUE}▶${NC} Creating sample project..."
 if [ ! -d "/home/master/projects/sample-project" ]; then
   mkdir -p /home/master/projects/sample-project
+  mkdir -p /home/master/projects/sample-project/.claude/agents
   cat > /home/master/projects/sample-project/README.md <<EOF
 # Sample Project
 
