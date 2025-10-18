@@ -447,9 +447,9 @@ export function FileTree() {
             setNewItemType('folder')
             setIsCreateModalOpen(true)
           }}
-          title="New Folder"
+          title={currentPath === '/home/master/projects' ? 'New Project (creates .claude structure)' : 'New Folder'}
         >
-          Folder
+          {currentPath === '/home/master/projects' ? 'Project' : 'Folder'}
         </Button>
         <Button
           size="small"
@@ -479,7 +479,7 @@ export function FileTree() {
       </div>
 
       <Modal
-        title={`Create New ${newItemType === 'file' ? 'File' : 'Folder'}`}
+        title={`Create New ${newItemType === 'file' ? 'File' : (currentPath === '/home/master/projects' ? 'Project' : 'Folder')}`}
         open={isCreateModalOpen}
         onOk={handleCreate}
         onCancel={() => {
@@ -490,7 +490,7 @@ export function FileTree() {
       >
         <div className="space-y-2">
           <Input
-            placeholder={`Enter ${newItemType} name${newItemType === 'file' ? ' (e.g., script.py, index.html)' : ''}`}
+            placeholder={`Enter ${newItemType === 'file' ? 'file' : (currentPath === '/home/master/projects' ? 'project' : 'folder')} name${newItemType === 'file' ? ' (e.g., script.py, index.html)' : ''}`}
             value={newItemName}
             onChange={(e) => setNewItemName(e.target.value)}
             onPressEnter={handleCreate}
@@ -499,6 +499,11 @@ export function FileTree() {
           <p className="text-sm text-gray-500">
             Creating in: <span className="font-mono">{currentPath}</span>
           </p>
+          {currentPath === '/home/master/projects' && newItemType === 'folder' && (
+            <p className="text-sm text-blue-600">
+              ℹ️ Will automatically create .claude/agents and .claude/skills directories
+            </p>
+          )}
         </div>
       </Modal>
 

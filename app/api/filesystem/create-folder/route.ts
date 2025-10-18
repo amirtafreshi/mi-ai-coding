@@ -33,13 +33,31 @@ export async function POST(request: NextRequest) {
     // Create the folder
     await mkdir(path, { recursive: true })
 
+    // Check if this is a new project folder in /home/master/projects
+    // If so, automatically create .claude directory structure
+    const projectsPath = '/home/master/projects'
+    const isProjectFolder = path.startsWith(projectsPath + '/') &&
+                           path.split('/').length === projectsPath.split('/').length + 1
+
+    if (isProjectFolder) {
+      // Create .claude directory structure for new projects
+      const claudeDir = `${path}/.claude`
+      const agentsDir = `${claudeDir}/agents`
+      const skillsDir = `${claudeDir}/skills`
+
+      await mkdir(agentsDir, { recursive: true })
+      await mkdir(skillsDir, { recursive: true })
+
+      console.log(`[create-folder] Created .claude structure for project: ${path}`)
+    }
+
     // Log activity
     await prisma.activityLog.create({
       data: {
         userId: (session.user as any).id,
         agent: 'file-explorer',
         action: 'create_folder',
-        details: `Created folder: ${path}`,
+        details: `Created folder: ${path}${isProjectFolder ? ' (with .claude structure)' : ''}`,
         level: 'info',
       }
     })
