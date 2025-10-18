@@ -127,7 +127,9 @@ export function FileTree() {
       const fullPath = `${basePath}/${item.name}`.replace(/\/+/g, '/')
       const isDirectory = item.isDirectory
 
-      const isAgentFile = basePath === '/home/master/projects/agents' && item.name.endsWith('.md')
+      // Detect agent files: .md files in /agents/ directory or its subdirectories
+      const isInAgentsFolder = basePath.includes('/agents')
+      const isAgentFile = isInAgentsFolder && item.name.endsWith('.md') && !isDirectory
 
       const menuItems: MenuProps['items'] = [
         {
