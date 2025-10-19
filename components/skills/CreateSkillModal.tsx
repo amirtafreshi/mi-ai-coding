@@ -23,7 +23,7 @@ export function CreateSkillModal({
   const [loading, setLoading] = useState(false)
   const [form] = Form.useForm()
 
-  const handleAIGenerate = async (values: any) {
+  async function handleAIGenerate(values: any) {
     console.log('[CreateSkillModal] handleAIGenerate called with values:', values)
     const { name, description } = values
 
@@ -39,7 +39,7 @@ export function CreateSkillModal({
     form.resetFields()
   }
 
-  const handlePaste = async (values: any) {
+  async function handlePaste(values: any) {
     console.log('[CreateSkillModal] handlePaste called with values:', values)
     const { name, markdown } = values
 
@@ -107,7 +107,7 @@ export function CreateSkillModal({
     }
   }
 
-  const handleImportUrl = async (values: any) {
+  async function handleImportUrl(values: any) {
     const { name, url } = values
 
     setLoading(true)
