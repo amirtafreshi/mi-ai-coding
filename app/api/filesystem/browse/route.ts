@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { readdir, stat } from 'fs/promises'
+import { readdir, stat, access } from 'fs/promises'
 import { join } from 'path'
+import { constants } from 'fs'
 
 export async function GET(request: NextRequest) {
   try {
@@ -37,6 +38,19 @@ export async function GET(request: NextRequest) {
         const fullPath = join(path, entry.name)
         try {
           const stats = await stat(fullPath)
+
+          // Check if directory contains SKILL.md (for skill folder detection)
+          let hasSkillMd = false
+          if (entry.isDirectory()) {
+            const skillMdPath = join(fullPath, 'SKILL.md')
+            try {
+              await access(skillMdPath, constants.F_OK)
+              hasSkillMd = true
+            } catch {
+              // SKILL.md doesn't exist, that's fine
+            }
+          }
+
           return {
             name: entry.name,
             isDirectory: entry.isDirectory(),
@@ -44,6 +58,7 @@ export async function GET(request: NextRequest) {
             size: stats.size,
             modified: stats.mtime.toISOString(),
             path: fullPath,
+            hasSkillMd, // Add this flag for skill folder detection
           }
         } catch (err) {
           // Skip files we can't access

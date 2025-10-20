@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Modal, Tabs, Form, Input, Button, message, Checkbox } from 'antd'
 import { ThunderboltOutlined, FileTextOutlined, LinkOutlined } from '@ant-design/icons'
+import { SkillResourceModal } from './SkillResourceModal'
 
 interface CreateSkillModalProps {
   open: boolean
@@ -23,7 +24,13 @@ export function CreateSkillModal({
   const [loading, setLoading] = useState(false)
   const [form] = Form.useForm()
 
-  async function handleAIGenerate(values: any) {
+  // Resource manager modal state
+  const [isResourceModalOpen, setIsResourceModalOpen] = useState(false)
+  const [savedSkillName, setSavedSkillName] = useState('')
+  const [savedResourcesPath, setSavedResourcesPath] = useState('')
+  const [savedSkillPath, setSavedSkillPath] = useState('')
+
+  const handleAIGenerate = async (values: any) => {
     console.log('[CreateSkillModal] handleAIGenerate called with values:', values)
     const { name, description } = values
 
@@ -39,7 +46,7 @@ export function CreateSkillModal({
     form.resetFields()
   }
 
-  async function handlePaste(values: any) {
+  const handlePaste = async (values: any) => {
     console.log('[CreateSkillModal] handlePaste called with values:', values)
     const { name, markdown } = values
 
@@ -51,7 +58,11 @@ export function CreateSkillModal({
     // Validate YAML frontmatter
     const yamlMatch = markdown.match(/^---\n([\s\S]*?)\n---/)
     if (!yamlMatch) {
-      message.error('SKILL.md must start with YAML frontmatter (---\\n...\\n---)')
+      message.error({
+        content: 'Invalid YAML format: Skill must start with YAML frontmatter',
+        duration: 6,
+        style: { marginTop: '20vh' }
+      })
       return
     }
 
@@ -59,8 +70,21 @@ export function CreateSkillModal({
     const nameMatch = yamlContent.match(/^name:\s*(.+)$/m)
     const descMatch = yamlContent.match(/^description:\s*(.+)$/m)
 
-    if (!nameMatch || !descMatch) {
-      message.error('YAML frontmatter must include "name" and "description" fields')
+    if (!nameMatch) {
+      message.error({
+        content: 'Missing "name" field in YAML frontmatter',
+        duration: 6,
+        style: { marginTop: '20vh' }
+      })
+      return
+    }
+
+    if (!descMatch) {
+      message.error({
+        content: 'Missing "description" field in YAML frontmatter',
+        duration: 6,
+        style: { marginTop: '20vh' }
+      })
       return
     }
 
@@ -95,6 +119,13 @@ export function CreateSkillModal({
       message.success(data.message || 'Skill saved successfully!')
       form.resetFields()
       onClose()
+
+      // Show resource manager modal
+      setSavedSkillName(data.name || fileName)
+      setSavedResourcesPath(data.resourcesPath)
+      setSavedSkillPath(data.skillPath)
+      setIsResourceModalOpen(true)
+
       // Notify parent to refresh file list (doesn't open editor)
       if (onPasteSaved) {
         onPasteSaved()
@@ -107,7 +138,7 @@ export function CreateSkillModal({
     }
   }
 
-  async function handleImportUrl(values: any) {
+  const handleImportUrl = async (values: any) => {
     const { name, url } = values
 
     setLoading(true)
@@ -141,6 +172,49 @@ export function CreateSkillModal({
     }
   }
 
+  const handleSubmit = async () => {
+    console.log('[CreateSkillModal] handleSubmit called, activeMethod:', activeMethod)
+    console.log('[CreateSkillModal] Form values:', form.getFieldsValue())
+
+    try {
+      // Define field names for each tab to validate only active tab fields
+      let fieldNames: string[] = []
+
+      if (activeMethod === 'ai') {
+        fieldNames = ['name', 'description']
+      } else if (activeMethod === 'paste') {
+        fieldNames = ['name', 'markdown']
+      } else if (activeMethod === 'import') {
+        fieldNames = ['name', 'url']
+      }
+
+      console.log('[CreateSkillModal] Validating fields:', fieldNames)
+
+      // Validate only the fields relevant to the active tab
+      const values = await form.validateFields(fieldNames)
+      console.log('[CreateSkillModal] Validation passed, values:', values)
+
+      // Manually call the appropriate handler based on active tab
+      if (activeMethod === 'ai') {
+        await handleAIGenerate(values)
+      } else if (activeMethod === 'paste') {
+        await handlePaste(values)
+      } else if (activeMethod === 'import') {
+        await handleImportUrl(values)
+      }
+    } catch (error: any) {
+      console.log('[CreateSkillModal] Validation failed:', error)
+      if (error.errorFields) {
+        console.log('[CreateSkillModal] Failed fields:', error.errorFields.map((f: any) => f.name[0]))
+      }
+    }
+  }
+
+  const handleCancel = () => {
+    form.resetFields()
+    onClose()
+  }
+
   const tabItems = [
     {
       key: 'ai',
@@ -152,8 +226,10 @@ export function CreateSkillModal({
       children: (
         <Form
           form={form}
+          name="ai-generate-form"
           layout="vertical"
           onFinish={handleAIGenerate}
+          autoComplete="off"
         >
           <Form.Item
             label="Skill Name"
@@ -176,12 +252,6 @@ export function CreateSkillModal({
               showCount
             />
           </Form.Item>
-
-          <Form.Item>
-            <Button type="primary" htmlType="submit" loading={loading} block>
-              Generate Skill with AI
-            </Button>
-          </Form.Item>
         </Form>
       ),
     },
@@ -195,8 +265,10 @@ export function CreateSkillModal({
       children: (
         <Form
           form={form}
+          name="paste-form"
           layout="vertical"
           onFinish={handlePaste}
+          autoComplete="off"
         >
           <Form.Item
             label="Skill Name"
@@ -218,12 +290,6 @@ export function CreateSkillModal({
               style={{ fontFamily: 'monospace', fontSize: '12px' }}
             />
           </Form.Item>
-
-          <Form.Item>
-            <Button type="primary" htmlType="submit" loading={loading} block>
-              Save Skill
-            </Button>
-          </Form.Item>
         </Form>
       ),
     },
@@ -237,8 +303,10 @@ export function CreateSkillModal({
       children: (
         <Form
           form={form}
+          name="import-url-form"
           layout="vertical"
           onFinish={handleImportUrl}
+          autoComplete="off"
         >
           <Form.Item
             label="Skill Name (optional)"
@@ -261,33 +329,51 @@ export function CreateSkillModal({
               placeholder="https://raw.githubusercontent.com/.../SKILL.md"
             />
           </Form.Item>
-
-          <Form.Item>
-            <Button type="primary" htmlType="submit" loading={loading} block>
-              Import Skill
-            </Button>
-          </Form.Item>
         </Form>
       ),
     },
   ]
 
   return (
-    <Modal
-      title="Create New Skill"
-      open={open}
-      onCancel={() => {
-        onClose()
-        form.resetFields()
-      }}
-      footer={null}
-      width={600}
-    >
-      <Tabs
-        activeKey={activeMethod}
-        onChange={(key) => setActiveMethod(key as CreationMethod)}
-        items={tabItems}
+    <>
+      <Modal
+        title="Create New Skill"
+        open={open}
+        onCancel={handleCancel}
+        width={700}
+        footer={[
+          <Button key="cancel" onClick={handleCancel}>
+            Cancel
+          </Button>,
+          <Button
+            key="next"
+            type="primary"
+            loading={loading}
+            onClick={handleSubmit}
+          >
+            {activeMethod === 'ai' ? 'Generate →' : activeMethod === 'paste' ? 'Save' : 'Next →'}
+          </Button>,
+        ]}
+      >
+        <Tabs
+          activeKey={activeMethod}
+          onChange={(key) => {
+            console.log('[CreateSkillModal] Tab changed to:', key)
+            setActiveMethod(key as CreationMethod)
+            form.resetFields()
+          }}
+          items={tabItems}
+        />
+      </Modal>
+
+      {/* Resource Manager Modal */}
+      <SkillResourceModal
+        open={isResourceModalOpen}
+        onClose={() => setIsResourceModalOpen(false)}
+        skillName={savedSkillName}
+        resourcesPath={savedResourcesPath}
+        skillPath={savedSkillPath}
       />
-    </Modal>
+    </>
   )
 }

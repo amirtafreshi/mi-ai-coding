@@ -69,7 +69,15 @@ export function ActivityStream() {
     }
 
     try {
-      const wsUrl = `ws://${window.location.hostname}:3001`
+      // Use wss:// for HTTPS with Nginx proxy, ws:// for HTTP direct connection
+      let wsUrl: string
+      if (window.location.protocol === 'https:') {
+        // Use Nginx proxy path for HTTPS
+        wsUrl = `wss://${window.location.host}/activity-stream/`
+      } else {
+        // Direct connection for HTTP/localhost
+        wsUrl = `ws://${window.location.hostname}:3001`
+      }
       console.log('[ActivityStream] Connecting to WebSocket:', wsUrl)
       const ws = new WebSocket(wsUrl)
 

@@ -28,6 +28,8 @@ import { SkillDeployModal } from '@/components/skills/SkillDeployModal'
 import { CreateSkillModal } from '@/components/skills/CreateSkillModal'
 import { SkillEditorModal } from '@/components/skills/SkillEditorModal'
 import { SkillSelectorModal } from '@/components/skills/SkillSelectorModal'
+import { SkillResourceModal } from '@/components/skills/SkillResourceModal'
+import { PathBreadcrumb } from './PathBreadcrumb'
 
 interface FileNode {
   id: string
@@ -80,6 +82,12 @@ export function FileTree() {
   const [editorSkillInitialContent, setEditorSkillInitialContent] = useState('')
   const [editorSkillSkipAI, setEditorSkillSkipAI] = useState(false)
 
+  // Skill resource modal states
+  const [isSkillResourceModalOpen, setIsSkillResourceModalOpen] = useState(false)
+  const [resourceSkillName, setResourceSkillName] = useState('')
+  const [resourceSkillPath, setResourceSkillPath] = useState('')
+  const [resourcesPath, setResourcesPath] = useState('')
+
   // Hydrate client-side path from localStorage after mount
   useEffect(() => {
     setIsClient(true)
@@ -89,6 +97,9 @@ export function FileTree() {
     }
   }, [])
   const [expandedKeys, setExpandedKeys] = useState<string[]>([])
+
+  // Drag and drop state
+  const [isDragOver, setIsDragOver] = useState(false)
 
   useEffect(() => {
     loadFiles(currentPath)
@@ -149,9 +160,10 @@ export function FileTree() {
       const isInAgentsFolder = basePath.includes('/agents')
       const isAgentFile = isInAgentsFolder && item.name.endsWith('.md') && !isDirectory
 
-      // Detect skill files: SKILL.md files in /skills/ directory or its subdirectories
-      const isInSkillsFolder = basePath.includes('/skills')
-      const isSkillFile = isInSkillsFolder && item.name === 'SKILL.md' && !isDirectory
+      // Detect skill folders: directories in /skills/ that contain a SKILL.md file
+      // We check if we're directly in /home/master/projects/skills (not nested)
+      const isInSkillsFolder = basePath === '/home/master/projects/skills'
+      const isSkillFolder = isInSkillsFolder && isDirectory && item.hasSkillMd === true
 
       const menuItems: MenuProps['items'] = [
         {
@@ -195,16 +207,15 @@ export function FileTree() {
                     title="Deploy Agent"
                   />
                 )}
-                {isSkillFile && (
+                {isSkillFolder && (
                   <Button
                     type="primary"
                     size="small"
                     icon={<ThunderboltOutlined />}
                     onClick={(e) => {
                       e.stopPropagation()
-                      // Extract skill folder name from path
-                      const skillFolderName = basePath.split('/').pop() || ''
-                      setDeploySkillFile(skillFolderName)
+                      // Use folder name as the skill name
+                      setDeploySkillFile(item.name)
                       setIsSkillDeployModalOpen(true)
                     }}
                     title="Deploy Skill"
@@ -338,6 +349,55 @@ export function FileTree() {
     })
   }
 
+  // Drag and drop handlers
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragOver(true)
+  }
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragOver(false)
+  }
+
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragOver(false)
+
+    const files = Array.from(e.dataTransfer.files)
+    if (files.length === 0) {
+      return
+    }
+
+    try {
+      const formData = new FormData()
+      files.forEach((file) => {
+        formData.append('files', file)
+      })
+      formData.append('targetPath', currentPath)
+
+      const response = await fetch('/api/filesystem/upload', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to upload files')
+      }
+
+      message.success(`Uploaded ${files.length} file(s) successfully!`)
+      loadFiles(currentPath)
+    } catch (error: any) {
+      console.error('[FileTree] Upload error:', error)
+      message.error(error.message || 'Failed to upload files')
+    }
+  }
+
   const contextMenuItems = (node: FileNode): MenuProps['items'] => [
     {
       key: 'open',
@@ -452,19 +512,15 @@ export function FileTree() {
         />
       </div>
 
-      {/* Current Path */}
-      <div className="px-2 py-1 bg-gray-50 border-b text-xs text-gray-600 truncate flex items-center justify-between" title={currentPath}>
-        <span className="flex-1 truncate">{currentPath}</span>
-        {currentPath !== '/' && (
-          <Button
-            type="text"
-            size="small"
-            icon={<ArrowUpOutlined />}
-            onClick={handleGoUp}
-            title="Go to parent directory"
-            className="flex-shrink-0 ml-2"
-          />
-        )}
+      {/* Path Breadcrumb */}
+      <div className="px-2 py-1 border-b">
+        <PathBreadcrumb
+          currentPath={currentPath}
+          onNavigate={(path) => {
+            setCurrentPath(path)
+            loadFiles(path)
+          }}
+        />
       </div>
 
       {/* Action Buttons */}
@@ -526,7 +582,24 @@ export function FileTree() {
       </Space>
 
       {/* File Tree */}
-      <div className="flex-1 overflow-auto p-2">
+      <div
+        className="flex-1 overflow-auto p-2"
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        style={{
+          border: isDragOver ? '2px dashed #1890ff' : '2px dashed transparent',
+          backgroundColor: isDragOver ? '#e6f7ff' : 'transparent',
+          transition: 'all 0.2s ease',
+        }}
+      >
+        {isDragOver && (
+          <div className="absolute inset-0 flex items-center justify-center bg-blue-50 bg-opacity-90 z-10 pointer-events-none">
+            <div className="text-blue-600 text-lg font-semibold">
+              Drop files here to upload to {currentPath}
+            </div>
+          </div>
+        )}
         {treeData.length > 0 ? (
           <Tree
             showIcon
@@ -696,8 +769,15 @@ export function FileTree() {
           setEditorSkillDescription('')
           setEditorSkillSkipAI(false)
         }}
-        onSaveSuccess={() => {
+        onSaveSuccess={(data) => {
           loadFiles(currentPath)
+          // If skill data is provided, open resource modal
+          if (data?.name && data?.skillPath && data?.resourcesPath) {
+            setResourceSkillName(data.name)
+            setResourceSkillPath(data.skillPath)
+            setResourcesPath(data.resourcesPath)
+            setIsSkillResourceModalOpen(true)
+          }
         }}
       />
 
@@ -706,6 +786,19 @@ export function FileTree() {
         open={isSkillSelectorOpen}
         onClose={() => setIsSkillSelectorOpen(false)}
         onSelectPath={handleSkillSelectorPath}
+        onCreateNew={() => {
+          setIsSkillSelectorOpen(false)
+          setIsCreateSkillModalOpen(true)
+        }}
+      />
+
+      {/* Skill Resource Modal */}
+      <SkillResourceModal
+        open={isSkillResourceModalOpen}
+        onClose={() => setIsSkillResourceModalOpen(false)}
+        skillName={resourceSkillName}
+        resourcesPath={resourcesPath}
+        skillPath={resourceSkillPath}
       />
     </div>
   )

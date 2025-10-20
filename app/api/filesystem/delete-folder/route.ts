@@ -25,8 +25,8 @@ export async function DELETE(request: NextRequest) {
       path === allowed || path.startsWith(allowed + '/')
     )
 
-    const isProtected = protectedPaths.some(protected =>
-      path === protected || protected.startsWith(path + '/')
+    const isProtected = protectedPaths.some(protectedPath =>
+      path === protectedPath || protectedPath.startsWith(path + '/')
     )
 
     if (!isAllowed || isProtected) {

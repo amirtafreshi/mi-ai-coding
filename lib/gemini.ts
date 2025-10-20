@@ -113,3 +113,159 @@ Generate the complete, improved agent definition in Markdown format.`
     }
   })()
 }
+
+/**
+ * Skill creation system prompt template
+ */
+export const SKILL_SYSTEM_PROMPT = `You are an expert at creating Claude Code Skills. Skills are specialized modules that Claude loads dynamically when relevant to a task.
+
+## SKILL.md Format Requirements
+
+Skills use a specific format with YAML frontmatter:
+
+\`\`\`markdown
+---
+name: skill-name-here
+description: Clear description of what this skill does and when Claude should use it (max 200 chars)
+---
+
+# Skill Name Here
+
+## Overview
+Brief introduction to what this skill helps Claude accomplish.
+
+## Instructions
+Clear, step-by-step instructions for Claude to follow when using this skill.
+Use progressive disclosure - start with essentials, then provide details.
+
+## When to Use
+Specific conditions or triggers that indicate this skill should be loaded.
+
+## Examples
+Concrete examples of using this skill effectively.
+
+## Guidelines
+- Best practices
+- Common pitfalls to avoid
+- Tips for optimal results
+
+## Resources
+List any resource files that support this skill (in resources/ folder):
+- resources/examples.md - Example use cases
+- resources/templates/ - Template files
+- resources/reference.md - Reference documentation
+\`\`\`
+
+## Key Principles
+
+1. **Progressive Disclosure**: Claude first sees only the name and description. The full SKILL.md is loaded only when relevant.
+2. **Clear Descriptions**: The description field determines when Claude loads the skill - make it specific and actionable.
+3. **Actionable Instructions**: Provide clear, step-by-step guidance that Claude can follow.
+4. **Resource Support**: Skills can include reference files, templates, and examples in a resources/ folder.
+
+## CRITICAL: YAML Frontmatter Requirements
+
+The skill MUST start with YAML frontmatter in this EXACT format:
+
+\`\`\`
+---
+name: skill-name-here
+description: Description here (max 200 characters)
+---
+\`\`\`
+
+- Name MUST be lowercase with hyphens (e.g., "my-skill-name")
+- Description MUST be 200 characters or less
+- Both fields are REQUIRED
+- The frontmatter MUST start on line 1 with "---"
+- The frontmatter MUST end with "---" on its own line
+
+Format the output as a complete Markdown document ready to be saved as SKILL.md.`
+
+/**
+ * Generate skill markdown from description
+ */
+export async function generateSkillMarkdown(
+  name: string,
+  description: string
+): Promise<AsyncIterable<string>> {
+  const client = getGeminiClient()
+  const model = client.getGenerativeModel({ model: 'gemini-2.0-flash-exp' })
+
+  // Sanitize skill name
+  const skillName = name.toLowerCase()
+    .replace(/[^a-z0-9-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+
+  // Truncate description if too long
+  const skillDescription = description.length > 200
+    ? description.substring(0, 197) + '...'
+    : description
+
+  const prompt = `${SKILL_SYSTEM_PROMPT}
+
+Create a Claude Code Skill with the following requirements:
+
+**Skill Name**: ${name}
+**Sanitized Skill Name** (for YAML): ${skillName}
+**Purpose**: ${description}
+
+IMPORTANT REQUIREMENTS:
+1. Start the skill with YAML frontmatter using the sanitized name: "${skillName}"
+2. Use this exact description in the YAML (${skillDescription.length} chars): "${skillDescription}"
+3. Ensure the YAML frontmatter is properly formatted with "---" delimiters
+4. The first line MUST be "---"
+5. Include both "name: ${skillName}" and "description: ${skillDescription}"
+6. DO NOT wrap the output in markdown code blocks - output ONLY the skill content starting with "---"
+
+Generate the complete SKILL.md file now.`
+
+  const result = await model.generateContentStream(prompt)
+
+  return (async function* () {
+    for await (const chunk of result.stream) {
+      const text = chunk.text()
+      yield text
+    }
+  })()
+}
+
+/**
+ * Refine existing skill markdown with additional instructions
+ */
+export async function refineSkillMarkdown(
+  existingMarkdown: string,
+  refinementInstructions: string
+): Promise<AsyncIterable<string>> {
+  const client = getGeminiClient()
+  const model = client.getGenerativeModel({ model: 'gemini-2.0-flash-exp' })
+
+  const prompt = `${SKILL_SYSTEM_PROMPT}
+
+Here is an existing skill definition:
+
+\`\`\`markdown
+${existingMarkdown}
+\`\`\`
+
+Please refine this skill definition based on the following instructions:
+${refinementInstructions}
+
+IMPORTANT: Maintain the YAML frontmatter format and ensure:
+1. The skill still starts with "---" on line 1
+2. Both "name" and "description" fields are present
+3. Description is 200 characters or less
+4. The frontmatter ends with "---" before the markdown content
+
+Generate the complete, improved skill definition in Markdown format.`
+
+  const result = await model.generateContentStream(prompt)
+
+  return (async function* () {
+    for await (const chunk of result.stream) {
+      const text = chunk.text()
+      yield text
+    }
+  })()
+}

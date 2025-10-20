@@ -52,6 +52,8 @@ export async function POST(request: NextRequest) {
 
     const { fileName, content, resources } = await request.json()
 
+    console.log('[API /api/skills/save] Received request:', { fileName, contentLength: content?.length, resourcesCount: resources?.length })
+
     if (!fileName || !content) {
       return NextResponse.json({ error: 'fileName and content are required' }, { status: 400 })
     }
@@ -82,12 +84,12 @@ export async function POST(request: NextRequest) {
     // Write SKILL.md file
     await writeFile(skillFilePath, content, 'utf-8')
 
-    // Create resources directory if resources are provided
-    if (resources && Array.isArray(resources) && resources.length > 0) {
-      const resourcesPath = join(skillPath, 'resources')
-      await mkdir(resourcesPath, { recursive: true })
+    // Always create resources directory
+    const resourcesPath = join(skillPath, 'resources')
+    await mkdir(resourcesPath, { recursive: true })
 
-      // Write resource files
+    // Write resource files if provided
+    if (resources && Array.isArray(resources) && resources.length > 0) {
       for (const resource of resources) {
         if (resource.fileName && resource.content) {
           const resourceFilePath = join(resourcesPath, resource.fileName)
@@ -107,10 +109,15 @@ export async function POST(request: NextRequest) {
       }
     })
 
+    console.log('[API /api/skills/save] Skill saved successfully:', { name: validation.name, path: skillFilePath })
+
     return NextResponse.json({
       success: true,
       message: `Skill "${validation.name}" saved successfully!`,
       path: skillFilePath,
+      skillPath: skillPath,
+      resourcesPath: resourcesPath,
+      skillName,
       name: validation.name,
       description: validation.description
     })

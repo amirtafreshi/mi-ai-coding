@@ -8,6 +8,7 @@ interface SkillSelectorModalProps {
   open: boolean
   onClose: () => void
   onSelectPath: (path: string) => void
+  onCreateNew?: () => void
 }
 
 interface Project {
@@ -16,7 +17,7 @@ interface Project {
   skillPath: string
 }
 
-export function SkillSelectorModal({ open, onClose, onSelectPath }: SkillSelectorModalProps) {
+export function SkillSelectorModal({ open, onClose, onSelectPath, onCreateNew }: SkillSelectorModalProps) {
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(false)
   const [masterSkillsPath, setMasterSkillsPath] = useState('')
@@ -58,13 +59,18 @@ export function SkillSelectorModal({ open, onClose, onSelectPath }: SkillSelecto
 
   return (
     <Modal
-      title="Select Skill Folder"
+      title="Skills Selector"
       open={open}
       onCancel={onClose}
       footer={[
         <Button key="cancel" onClick={onClose}>
           Cancel
-        </Button>
+        </Button>,
+        onCreateNew && (
+          <Button key="create" type="primary" onClick={onCreateNew}>
+            Create New Skill
+          </Button>
+        )
       ]}
       width={600}
     >

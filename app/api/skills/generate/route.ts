@@ -1,116 +1,125 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import { generateSkillMarkdown, refineSkillMarkdown } from '@/lib/gemini'
+import { z } from 'zod'
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || '')
+// Validation schema
+const generateSchema = z.object({
+  name: z.string().min(1).max(100),
+  description: z.string().min(10).max(2000),
+  mode: z.enum(['generate', 'refine']).default('generate'),
+  existingMarkdown: z.string().optional(),
+  refinementInstructions: z.string().optional(),
+})
 
+// POST /api/skills/generate - Generate skill with SSE streaming
 export async function POST(request: NextRequest) {
   try {
+    // Check authentication
     const session = await getServerSession(authOptions)
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const { name, description } = await request.json()
-
-    if (!name || !description) {
-      return NextResponse.json(
-        { error: 'Name and description are required' },
-        { status: 400 }
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
       )
     }
 
-    // Claude Code Skills-specific prompt
-    const prompt = `You are an expert at creating Claude Code Skills. Skills are specialized modules that Claude loads dynamically when relevant to a task.
+    // Parse and validate request body
+    const body = await request.json()
+    const validation = generateSchema.safeParse(body)
 
-## SKILL.md Format Requirements
+    if (!validation.success) {
+      return new Response(
+        JSON.stringify({ error: 'Validation failed', details: validation.error.issues }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
 
-Skills use a specific format with YAML frontmatter:
+    const { name, description, mode, existingMarkdown, refinementInstructions } = validation.data
 
-\`\`\`markdown
----
-name: skill-name-here
-description: Clear description of what this skill does and when Claude should use it (max 200 chars)
----
+    // Create SSE stream
+    const encoder = new TextEncoder()
+    const stream = new ReadableStream({
+      async start(controller) {
+        try {
+          let markdown = ''
 
-# Skill Name Here
+          console.log('[API /api/skills/generate] Starting generation:', { name, mode })
 
-## Overview
-Brief introduction to what this skill helps Claude accomplish.
+          // Get async iterable from Gemini
+          const streamIterator = mode === 'refine' && existingMarkdown && refinementInstructions
+            ? await refineSkillMarkdown(existingMarkdown, refinementInstructions)
+            : await generateSkillMarkdown(name, description)
 
-## Instructions
-Clear, step-by-step instructions for Claude to follow when using this skill.
-Use progressive disclosure - start with essentials, then provide details.
+          console.log('[API /api/skills/generate] Got stream iterator, starting to iterate...')
 
-## When to Use
-Specific conditions or triggers that indicate this skill should be loaded.
+          // Stream chunks
+          let chunkCount = 0
+          for await (const chunk of streamIterator) {
+            markdown += chunk
+            chunkCount++
 
-## Examples
-Concrete examples of using this skill effectively.
+            // Send chunk as SSE (only incremental content, not fullContent)
+            // This prevents JSON parsing errors from very long strings
+            const data = JSON.stringify({
+              type: 'chunk',
+              content: chunk,
+              currentLength: markdown.length // Send length instead of full content for progress
+            })
+            controller.enqueue(encoder.encode(`data: ${data}\n\n`))
 
-## Guidelines
-- Best practices
-- Common pitfalls to avoid
-- Tips for optimal results
+            // Log every 10 chunks
+            if (chunkCount % 10 === 0) {
+              console.log('[API /api/skills/generate] Sent chunk', chunkCount, 'total length:', markdown.length)
+            }
+          }
 
-## Resources
-List any resource files that support this skill (in resources/ folder):
-- resources/examples.md - Example use cases
-- resources/templates/ - Template files
-- resources/reference.md - Reference documentation
-\`\`\`
+          console.log('[API /api/skills/generate] Stream complete. Total chunks:', chunkCount, 'final length:', markdown.length)
 
-## Key Principles
+          // Clean up markdown code blocks if present (```markdown ... ```)
+          let cleanedMarkdown = markdown.trim()
+          if (cleanedMarkdown.startsWith('```markdown') || cleanedMarkdown.startsWith('```')) {
+            cleanedMarkdown = cleanedMarkdown.replace(/^```(?:markdown)?\n/, '')
+            cleanedMarkdown = cleanedMarkdown.replace(/\n```$/, '')
+            console.log('[API /api/skills/generate] Removed markdown code block wrapper')
+          }
 
-1. **Progressive Disclosure**: Claude first sees only the name and description. The full SKILL.md is loaded only when relevant.
-2. **Clear Descriptions**: The description field determines when Claude loads the skill - make it specific and actionable.
-3. **Actionable Instructions**: Provide clear, step-by-step guidance that Claude can follow.
-4. **Resource Support**: Skills can include reference files, templates, and examples in a resources/ folder.
+          // Send completion event
+          const completeData = JSON.stringify({
+            type: 'complete',
+            fullContent: cleanedMarkdown
+          })
+          controller.enqueue(encoder.encode(`data: ${completeData}\n\n`))
 
-## Examples of Good Skills
+          controller.close()
+        } catch (error: any) {
+          console.error('[API /api/skills/generate] Error:', error)
+          console.error('[API /api/skills/generate] Error stack:', error.stack)
 
-- **document-analyzer**: Analyzes and summarizes markdown, PDF, and Word documents
-- **code-reviewer**: Reviews code for best practices, bugs, and improvements
-- **test-generator**: Generates comprehensive test cases for code functions
-- **mcp-builder**: Guides creation of Model Context Protocol servers
-- **webapp-testing**: Creates Playwright tests for web applications
+          // Send error event
+          const errorData = JSON.stringify({
+            type: 'error',
+            message: error.message || 'Failed to generate skill'
+          })
+          controller.enqueue(encoder.encode(`data: ${errorData}\n\n`))
+          controller.close()
+        }
+      },
+    })
 
-## Your Task
-
-Create a Claude Code Skill with the following requirements:
-
-**Skill Name**: ${name}
-**Purpose**: ${description}
-
-Generate a complete SKILL.md file that:
-1. Uses proper YAML frontmatter with name and description (description max 200 chars)
-2. Provides clear, actionable instructions for Claude
-3. Explains when this skill should be used
-4. Includes concrete examples
-5. Suggests useful resource files (if applicable)
-
-**Important**:
-- Keep the description field under 200 characters
-- Make the name lowercase with hyphens (e.g., "my-skill-name")
-- Focus on what Claude should DO, not just what it should know
-- Use progressive disclosure - start simple, add depth as needed
-
-Generate the complete SKILL.md file now:`
-
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
-    const result = await model.generateContent(prompt)
-    const generatedContent = result.response.text()
-
-    return NextResponse.json({
-      success: true,
-      content: generatedContent
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      },
     })
   } catch (error: any) {
-    console.error('Error generating skill:', error)
-    return NextResponse.json(
-      { error: error.message || 'Failed to generate skill' },
-      { status: 500 }
+    console.error('[API /api/skills/generate] Error:', error)
+    return new Response(
+      JSON.stringify({ error: error.message || 'Internal server error' }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
     )
   }
 }
