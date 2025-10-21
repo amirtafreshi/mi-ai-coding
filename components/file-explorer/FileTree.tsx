@@ -29,6 +29,7 @@ import { CreateSkillModal } from '@/components/skills/CreateSkillModal'
 import { SkillEditorModal } from '@/components/skills/SkillEditorModal'
 import { SkillSelectorModal } from '@/components/skills/SkillSelectorModal'
 import { SkillResourceModal } from '@/components/skills/SkillResourceModal'
+import { RefineModal } from '@/components/common/RefineModal'
 import { PathBreadcrumb } from './PathBreadcrumb'
 
 interface FileNode {
@@ -57,7 +58,18 @@ export function FileTree() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [newItemName, setNewItemName] = useState('')
   const [newItemType, setNewItemType] = useState<'file' | 'folder'>('file')
-  const [currentPath, setCurrentPath] = useState<string>('/home/master/projects')
+  // Initialize path from localStorage if available (must be done before useState)
+  const getInitialPath = () => {
+    if (typeof window !== 'undefined') {
+      const savedPath = localStorage.getItem('fileExplorerPath')
+      if (savedPath) {
+        return savedPath
+      }
+    }
+    return '/home/master/projects'
+  }
+
+  const [currentPath, setCurrentPath] = useState<string>(getInitialPath())
   const [isClient, setIsClient] = useState(false)
   const [isDeployModalOpen, setIsDeployModalOpen] = useState(false)
   const [deployAgentFile, setDeployAgentFile] = useState<string>('')
@@ -88,13 +100,20 @@ export function FileTree() {
   const [resourceSkillPath, setResourceSkillPath] = useState('')
   const [resourcesPath, setResourcesPath] = useState('')
 
-  // Hydrate client-side path from localStorage after mount
+  // Refine modal states
+  const [isAgentRefineModalOpen, setIsAgentRefineModalOpen] = useState(false)
+  const [refineAgentPath, setRefineAgentPath] = useState('')
+  const [refineAgentContent, setRefineAgentContent] = useState('')
+  const [refineAgentFileName, setRefineAgentFileName] = useState('')
+
+  const [isSkillRefineModalOpen, setIsSkillRefineModalOpen] = useState(false)
+  const [refineSkillPath, setRefineSkillPath] = useState('')
+  const [refineSkillContent, setRefineSkillContent] = useState('')
+  const [refineSkillFileName, setRefineSkillFileName] = useState('')
+
+  // Set client flag after mount
   useEffect(() => {
     setIsClient(true)
-    const savedPath = localStorage.getItem('fileExplorerPath')
-    if (savedPath) {
-      setCurrentPath(savedPath)
-    }
   }, [])
   const [expandedKeys, setExpandedKeys] = useState<string[]>([])
 
@@ -108,6 +127,132 @@ export function FileTree() {
       localStorage.setItem('fileExplorerPath', currentPath)
     }
   }, [currentPath])
+
+  // Handle refining an agent file
+  const handleRefineAgent = async (agentPath: string) => {
+    try {
+      console.log('[FileTree] Loading agent content for refinement:', agentPath)
+      const response = await fetch(`/api/filesystem/read?path=${encodeURIComponent(agentPath)}`)
+
+      if (!response.ok) {
+        throw new Error('Failed to load agent file')
+      }
+
+      const data = await response.json()
+      setRefineAgentPath(agentPath)
+      setRefineAgentContent(data.content || '')
+      setRefineAgentFileName(agentPath.split('/').pop() || 'AGENT.md')
+      setIsAgentRefineModalOpen(true)
+    } catch (error: any) {
+      console.error('[FileTree] Error loading agent for refinement:', error)
+      message.error('Failed to load agent file')
+    }
+  }
+
+  // Handle refining a skill
+  const handleRefineSkill = async (skillFolderPath: string) => {
+    try {
+      const skillMdPath = `${skillFolderPath}/SKILL.md`
+      console.log('[FileTree] Loading skill content for refinement:', skillMdPath)
+
+      const response = await fetch(`/api/filesystem/read?path=${encodeURIComponent(skillMdPath)}`)
+
+      if (!response.ok) {
+        throw new Error('Failed to load skill file')
+      }
+
+      const data = await response.json()
+      setRefineSkillPath(skillMdPath)
+      setRefineSkillContent(data.content || '')
+      setRefineSkillFileName('SKILL.md')
+      setIsSkillRefineModalOpen(true)
+    } catch (error: any) {
+      console.error('[FileTree] Error loading skill for refinement:', error)
+      message.error('Failed to load skill file')
+    }
+  }
+
+  // Handle successful agent refinement
+  const handleAgentRefineSuccess = async (refinedContent: string) => {
+    try {
+      console.log('[FileTree] Saving refined agent content')
+      const response = await fetch('/api/filesystem/write', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          path: refineAgentPath,
+          content: refinedContent,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to save refined agent')
+      }
+
+      message.success('Agent refined and saved successfully!')
+
+      // Notify editor if file is open
+      const updateEvent = new CustomEvent('file:update', {
+        detail: { path: refineAgentPath, content: refinedContent }
+      })
+      window.dispatchEvent(updateEvent)
+
+      // Open the file in editor to show the changes
+      const openEvent = new CustomEvent('file:open', {
+        detail: {
+          path: refineAgentPath,
+          name: refineAgentFileName
+        }
+      })
+      window.dispatchEvent(openEvent)
+
+      loadFiles(currentPath)
+    } catch (error: any) {
+      console.error('[FileTree] Error saving refined agent:', error)
+      message.error('Failed to save refined agent')
+    }
+  }
+
+  // Handle successful skill refinement
+  const handleSkillRefineSuccess = async (refinedContent: string) => {
+    try {
+      console.log('[FileTree] Saving refined skill content')
+      const response = await fetch('/api/filesystem/write', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          path: refineSkillPath,
+          content: refinedContent,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to save refined skill')
+      }
+
+      message.success('Skill refined and saved successfully!')
+
+      // Notify editor if file is open
+      const updateEvent = new CustomEvent('file:update', {
+        detail: { path: refineSkillPath, content: refinedContent }
+      })
+      window.dispatchEvent(updateEvent)
+
+      // Open the file in editor to show the changes
+      const openEvent = new CustomEvent('file:open', {
+        detail: {
+          path: refineSkillPath,
+          name: refineSkillFileName
+        }
+      })
+      window.dispatchEvent(openEvent)
+
+      loadFiles(currentPath)
+    } catch (error: any) {
+      console.error('[FileTree] Error saving refined skill:', error)
+      message.error('Failed to save refined skill')
+    }
+  }
 
   const loadFiles = async (path: string) => {
     setLoading(true)
@@ -195,31 +340,54 @@ export function FileTree() {
               </span>
               <div className="flex gap-1">
                 {isAgentFile && (
-                  <Button
-                    type="primary"
-                    size="small"
-                    icon={<RocketOutlined />}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setDeployAgentFile(item.name)
-                      setIsDeployModalOpen(true)
-                    }}
-                    title="Deploy Agent"
-                  />
+                  <>
+                    <Button
+                      type="default"
+                      size="small"
+                      icon={<ThunderboltOutlined />}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleRefineAgent(fullPath)
+                      }}
+                      title="Refine Agent with AI"
+                    />
+                    <Button
+                      type="primary"
+                      size="small"
+                      icon={<RocketOutlined />}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setDeployAgentFile(item.name)
+                        setIsDeployModalOpen(true)
+                      }}
+                      title="Deploy Agent"
+                    />
+                  </>
                 )}
                 {isSkillFolder && (
-                  <Button
-                    type="primary"
-                    size="small"
-                    icon={<ThunderboltOutlined />}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      // Use folder name as the skill name
-                      setDeploySkillFile(item.name)
-                      setIsSkillDeployModalOpen(true)
-                    }}
-                    title="Deploy Skill"
-                  />
+                  <>
+                    <Button
+                      type="default"
+                      size="small"
+                      icon={<ThunderboltOutlined />}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleRefineSkill(fullPath)
+                      }}
+                      title="Refine Skill with AI"
+                    />
+                    <Button
+                      type="primary"
+                      size="small"
+                      icon={<ThunderboltOutlined />}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setDeploySkillFile(item.name)
+                        setIsSkillDeployModalOpen(true)
+                      }}
+                      title="Deploy Skill"
+                    />
+                  </>
                 )}
                 <Dropdown
                   menu={{ items: menuItems }}
@@ -799,6 +967,28 @@ export function FileTree() {
         skillName={resourceSkillName}
         resourcesPath={resourcesPath}
         skillPath={resourceSkillPath}
+      />
+
+      {/* Agent Refine Modal */}
+      <RefineModal
+        open={isAgentRefineModalOpen}
+        fileName={refineAgentFileName}
+        filePath={refineAgentPath}
+        fileType="agent"
+        currentContent={refineAgentContent}
+        onClose={() => setIsAgentRefineModalOpen(false)}
+        onSuccess={handleAgentRefineSuccess}
+      />
+
+      {/* Skill Refine Modal */}
+      <RefineModal
+        open={isSkillRefineModalOpen}
+        fileName={refineSkillFileName}
+        filePath={refineSkillPath}
+        fileType="skill"
+        currentContent={refineSkillContent}
+        onClose={() => setIsSkillRefineModalOpen(false)}
+        onSuccess={handleSkillRefineSuccess}
       />
     </div>
   )

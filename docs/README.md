@@ -20,8 +20,13 @@ docs/
 ├── README.md                          # This file - documentation index
 ├── QUICK-START.md                     # 5-minute quick start guide
 ├── ARCHITECTURE.md                    # Complete technical architecture
+├── TROUBLESHOOTING.md                 # Common issues and solutions
+├── SKILLS-WORKFLOW.md                 # Skills Management system workflow
 ├── architecture/                       # Additional architecture documentation
 │   └── START-PROJECT-PROMPT.md        # Master instructions for agent initialization
+├── reports/                            # Test reports and documentation
+│   ├── SKILLS-MANAGEMENT-E2E-TEST-REPORT.md
+│   └── SKILLS-TESTING-SUMMARY.md
 ├── AUTH_SETUP.md                      # Authentication setup guide
 ├── VNC-SETUP.md                       # VNC server setup guide
 ├── AGENT_CREATION_ALTERNATIVES.md     # Agent creation alternatives
@@ -78,6 +83,28 @@ VNC integration guide:
 - Clipboard integration
 - Browser automation requirements
 
+### [TROUBLESHOOTING.md](./TROUBLESHOOTING.md)
+Comprehensive troubleshooting guide covering:
+- WebSocket connection issues (Activity Stream, VNC)
+- Skills Management issues (API methods, modal workflows)
+- API endpoint debugging
+- VNC connection problems
+- Authentication issues
+- File system operations
+- Quick reference for port configurations
+- Recent fixes log with solutions
+
+### [SKILLS-WORKFLOW.md](./SKILLS-WORKFLOW.md)
+Skills Management system documentation:
+- Complete workflow with visual diagrams
+- AI-generated vs. manual skill creation
+- Resource upload automation
+- Component architecture and data flow
+- Recent improvements and fixes
+- API endpoint specifications
+- User guide with best practices
+- Testing checklist
+
 ## Agent Documentation
 
 Agent-specific documentation is located in `/agents/`:
@@ -94,10 +121,12 @@ Agent-specific documentation is located in `/agents/`:
 1. **Quick Start**: Follow [QUICK-START.md](./QUICK-START.md) to get running in 5 minutes
 2. **Initial Setup**: Follow [INSTALL.md](../INSTALL.md) for comprehensive installation
 3. **Understanding Architecture**: Read [ARCHITECTURE.md](./ARCHITECTURE.md) for technical details
-4. **Contributing**: Review [CONTRIBUTING.md](../CONTRIBUTING.md) for development workflow
-5. **Phase Planning**: Check [PROGRESS.md](../PROGRESS.md) for current status
-6. **Agent Coordination**: Check [agents/orchestrating/README.md](../agents/orchestrating/README.md)
-7. **Running Tests**: Use npm scripts defined in [CLAUDE.md](../CLAUDE.md)
+4. **Troubleshooting**: Check [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for common issues and solutions
+5. **Skills Management**: Read [SKILLS-WORKFLOW.md](./SKILLS-WORKFLOW.md) for complete workflow documentation
+6. **Contributing**: Review [CONTRIBUTING.md](../CONTRIBUTING.md) for development workflow
+7. **Phase Planning**: Check [PROGRESS.md](../PROGRESS.md) for current status
+8. **Agent Coordination**: Check [agents/orchestrating/README.md](../agents/orchestrating/README.md)
+9. **Running Tests**: Use npm scripts defined in [CLAUDE.md](../CLAUDE.md)
 
 ## Documentation Standards
 
@@ -126,5 +155,21 @@ When adding new documentation:
 
 ---
 
-**Last Updated**: 2025-10-12
+## Recent Documentation Updates
+
+### 2025-10-19
+- Added **TROUBLESHOOTING.md** - Comprehensive guide for common issues
+- Added **SKILLS-WORKFLOW.md** - Complete Skills Management workflow documentation
+- Documented WebSocket port configuration fix
+- Documented SkillResourceModal API method fix
+- Documented Resource Modal auto-open enhancement
+
+### 2025-10-12
+- Updated ARCHITECTURE.md with complete system documentation
+- Added QUICK-START.md for rapid onboarding
+- Enhanced directory structure documentation
+
+---
+
+**Last Updated**: 2025-10-19
 **Documentation Agent**: Claude Code

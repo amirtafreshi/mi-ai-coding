@@ -2,9 +2,11 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import Editor from '@monaco-editor/react'
-import { Card, Tabs, Button, Space, message, Modal, Input, Form, Select } from 'antd'
-import { CloseOutlined, SaveOutlined, FileOutlined, SaveFilled, LockOutlined, CloseCircleOutlined, FullscreenOutlined, FullscreenExitOutlined } from '@ant-design/icons'
+import { Card, Tabs, Button, Space, message, Modal, Input, Form, Select, App } from 'antd'
+import { CloseOutlined, SaveOutlined, FileOutlined, SaveFilled, LockOutlined, CloseCircleOutlined, FullscreenOutlined, FullscreenExitOutlined, ThunderboltOutlined } from '@ant-design/icons'
 import type { TabsProps } from 'antd'
+import { RefineModal } from '@/components/common/RefineModal'
+import type { DocumentType } from '@/components/common/useDocumentRefine'
 
 interface OpenFile {
   key: string
@@ -16,6 +18,7 @@ interface OpenFile {
 }
 
 export function MonacoEditor() {
+  const { modal } = App.useApp()
   const [openFiles, setOpenFiles] = useState<OpenFile[]>([])
   const [activeKey, setActiveKey] = useState<string>('')
   const [saving, setSaving] = useState(false)
@@ -24,6 +27,8 @@ export function MonacoEditor() {
   const [saveAsPath, setSaveAsPath] = useState('')
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [form] = Form.useForm()
+  const [isRefineModalOpen, setIsRefineModalOpen] = useState(false)
+  const [refineFileContent, setRefineFileContent] = useState('')
 
   const getLanguageFromPath = (path: string): string => {
     const extension = path.split('.').pop()?.toLowerCase()
@@ -114,17 +119,35 @@ export function MonacoEditor() {
 
     if (file?.isDirty) {
       console.log('[MonacoEditor] Showing unsaved changes modal')
-      Modal.confirm({
+      const modalInstance = modal.confirm({
         title: 'Unsaved Changes',
-        content: `"${file.name}" has unsaved changes. Do you want to save before closing?`,
+        content: `"${file.name}" has unsaved changes. What would you like to do?`,
+        zIndex: 10000,
         okText: 'Save & Close',
-        cancelText: 'Close Without Saving',
+        cancelText: 'Cancel',
+        okButtonProps: { type: 'primary' },
+        footer: (_, { OkBtn, CancelBtn }) => (
+          <>
+            <CancelBtn />
+            <Button
+              danger
+              onClick={() => {
+                modalInstance.destroy()
+                performClose()
+              }}
+            >
+              Close Without Saving
+            </Button>
+            <OkBtn />
+          </>
+        ),
         onOk: async () => {
           await saveFile(key)
           performClose()
         },
         onCancel: () => {
-          performClose()
+          // Do nothing - just close the modal and let user continue editing
+          console.log('[MonacoEditor] User cancelled, keeping file open')
         },
       })
     } else {
@@ -287,6 +310,39 @@ export function MonacoEditor() {
     setIsFullscreen(!isFullscreen)
   }
 
+  // Detect file type from path
+  const getFileType = (path: string): DocumentType => {
+    if (path.includes('/.claude/agents/') || path.includes('/agents/')) {
+      return 'agent'
+    }
+    if (path.includes('/.claude/skills/') || path.includes('/skills/')) {
+      return 'skill'
+    }
+    return 'file'
+  }
+
+  // Handle refine button click
+  const handleRefine = () => {
+    if (!activeFile) return
+    setRefineFileContent(activeFile.content)
+    setIsRefineModalOpen(true)
+  }
+
+  // Handle successful refinement
+  const handleRefineSuccess = (refinedContent: string) => {
+    if (!activeFile) return
+
+    // Update the file content in editor
+    setOpenFiles((prevFiles) =>
+      prevFiles.map((f) =>
+        f.key === activeFile.key
+          ? { ...f, content: refinedContent, isDirty: true }
+          : f
+      )
+    )
+    message.success('File refined successfully! Remember to save.')
+  }
+
   const activeFile = openFiles.find((f) => f.key === activeKey)
 
   const tabItems: TabsProps['items'] = openFiles.map((file) => ({
@@ -374,13 +430,37 @@ export function MonacoEditor() {
       closeFile(path)
     }
 
+    const handleFileUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent<{ path: string; content: string }>
+      const { path, content } = customEvent.detail
+      console.log('[MonacoEditor] Received file:update event for:', path)
+
+      // Update file content if it's open
+      setOpenFiles((prevFiles) => {
+        const fileIndex = prevFiles.findIndex((f) => f.path === path)
+        if (fileIndex === -1) {
+          console.log('[MonacoEditor] File not open, ignoring update')
+          return prevFiles
+        }
+
+        console.log('[MonacoEditor] Updating file content and clearing dirty flag')
+        return prevFiles.map((f) =>
+          f.path === path ? { ...f, content, isDirty: false } : f
+        )
+      })
+
+      message.success('File updated with refined content')
+    }
+
     window.addEventListener('file:open', handleFileOpen)
     window.addEventListener('file:close', handleFileClose)
-    console.log('[MonacoEditor] Event listeners registered for file:open and file:close')
+    window.addEventListener('file:update', handleFileUpdate)
+    console.log('[MonacoEditor] Event listeners registered for file:open, file:close, and file:update')
 
     return () => {
       window.removeEventListener('file:open', handleFileOpen)
       window.removeEventListener('file:close', handleFileClose)
+      window.removeEventListener('file:update', handleFileUpdate)
       console.log('[MonacoEditor] Event listeners unregistered')
     }
   }, [openFiles, getLanguageFromPath, closeFile])
@@ -413,6 +493,14 @@ export function MonacoEditor() {
               onClick={toggleFullscreen}
             >
               Fullscreen
+            </Button>
+            <Button
+              size="small"
+              icon={<ThunderboltOutlined />}
+              onClick={handleRefine}
+              disabled={!activeFile}
+            >
+              Refine with AI
             </Button>
             <Button
               type="primary"
@@ -604,6 +692,19 @@ export function MonacoEditor() {
           />
         )}
       </Modal>
+
+      {/* Refine Modal */}
+      {activeFile && (
+        <RefineModal
+          open={isRefineModalOpen}
+          fileName={activeFile.name}
+          filePath={activeFile.path}
+          fileType={getFileType(activeFile.path)}
+          currentContent={refineFileContent}
+          onClose={() => setIsRefineModalOpen(false)}
+          onSuccess={handleRefineSuccess}
+        />
+      )}
     </Card>
   )
 }

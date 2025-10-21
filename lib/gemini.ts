@@ -269,3 +269,74 @@ Generate the complete, improved skill definition in Markdown format.`
     }
   })()
 }
+
+/**
+ * Generic document refinement for any file type
+ * Detects file type and applies appropriate refinement strategy
+ */
+export async function refineDocument(
+  content: string,
+  refinementInstructions: string,
+  fileType: 'agent' | 'skill' | 'file',
+  fileName?: string
+): Promise<AsyncIterable<string>> {
+  // Route to specialized refinement functions for agents and skills
+  if (fileType === 'agent') {
+    return refineAgentMarkdown(content, refinementInstructions)
+  } else if (fileType === 'skill') {
+    return refineSkillMarkdown(content, refinementInstructions)
+  }
+
+  // Generic file refinement
+  const client = getGeminiClient()
+  const model = client.getGenerativeModel({ model: 'gemini-2.0-flash-exp' })
+
+  // Detect language/file type from extension
+  const extension = fileName?.split('.').pop()?.toLowerCase() || 'txt'
+  const languageHints: Record<string, string> = {
+    ts: 'TypeScript',
+    tsx: 'TypeScript React (TSX)',
+    js: 'JavaScript',
+    jsx: 'JavaScript React (JSX)',
+    json: 'JSON',
+    md: 'Markdown',
+    py: 'Python',
+    css: 'CSS',
+    scss: 'SCSS',
+    html: 'HTML',
+    yaml: 'YAML',
+    yml: 'YAML',
+  }
+  const language = languageHints[extension] || 'text'
+
+  const prompt = `You are an expert code and document reviewer. Your task is to refine and improve the following ${language} document.
+
+Here is the current content:
+
+\`\`\`${extension}
+${content}
+\`\`\`
+
+Please refine this document based on the following instructions:
+${refinementInstructions}
+
+Guidelines:
+- Maintain the file's original purpose and structure
+- Apply ${language}-specific best practices and formatting
+- Improve code quality, readability, and maintainability
+- Fix any obvious errors or issues
+- Add helpful comments where appropriate
+- Preserve all existing functionality
+
+Generate the complete, improved ${language} document.`
+
+  const result = await model.generateContentStream(prompt)
+
+  return (async function* () {
+    for await (const chunk of result.stream) {
+      const text = chunk.text()
+      yield text
+    }
+  })()
+}
+

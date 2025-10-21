@@ -1383,3 +1383,187 @@ Based on START-PROJECT-PROMPT.md requirements:
 4. noVNC viewer needs proper installation
 
 **Production Status**: 75% ready, 4-5 hours to v1.0.0 (after fixes applied)
+
+---
+
+## NEW SESSION 2025-10-19 - SKILLS & WEBSOCKET FIXES
+
+**Documentation Agent**: Documenting critical fixes and workflow improvements
+**Duration**: 1 hour
+**Fixes Documented**: 3 major issues resolved
+
+### Critical Fixes Completed
+
+#### Fix #1: Activity Stream WebSocket Port Configuration ✅ RESOLVED (2025-10-19)
+**Description**: Activity Stream WebSocket connection failing due to Nginx proxy misconfiguration
+**Root Cause**: Nginx configured to proxy `/activity-stream/` to port 3003, but WebSocket server running on port 3004
+**Evidence**:
+- `ecosystem.config.js` shows WebSocket server on port 3004
+- Nginx configuration had port 3003 in upstream definition
+- Browser console showed continuous connection failures
+
+**Impact**: Real-time activity logging completely non-functional in production
+
+**Resolution**: Updated Nginx configuration files to point to correct port
+**Files Modified**:
+- `/etc/nginx/sites-available/code.miglobal.com.mx` (line 19)
+- `/etc/nginx/sites-enabled/code.miglobal.com.mx` (line 19)
+
+**Configuration Change**:
+```nginx
+# Before
+upstream activity_stream {
+  server 127.0.0.1:3003;  # WRONG PORT
+}
+
+# After
+upstream activity_stream {
+  server 127.0.0.1:3004;  # CORRECT - matches ecosystem.config.js
+}
+```
+
+**Verification**:
+```bash
+sudo nginx -t && sudo systemctl reload nginx
+lsof -i :3004  # Verify WebSocket server running
+```
+
+**Status**: ✅ RESOLVED
+**Documented**: `docs/TROUBLESHOOTING.md` (WebSocket Issues section)
+
+---
+
+#### Fix #2: SkillResourceModal HTTP Method Error ✅ RESOLVED (2025-10-19)
+**Description**: Resource upload modal failed to load existing resources
+**Root Cause**: Using POST method instead of GET for `/api/filesystem/browse` endpoint
+**Error Messages**: `POST /api/filesystem/browse 404 (Not Found)`
+
+**Impact**: Users unable to see existing resources when uploading new files to skills
+
+**Resolution**: Changed API call from POST with body to GET with query parameters
+**Files Modified**: `components/skills/SkillResourceModal.tsx` (lines 37-62)
+
+**Code Change**:
+```typescript
+// Before - INCORRECT
+const response = await fetch('/api/filesystem/browse', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ path: resourcesPath }),
+})
+
+// After - CORRECT
+const response = await fetch(`/api/filesystem/browse?path=${encodeURIComponent(resourcesPath)}`, {
+  method: 'GET',
+})
+```
+
+**Status**: ✅ RESOLVED
+**Documented**: `docs/TROUBLESHOOTING.md` (Skills Management Issues section)
+
+---
+
+#### Fix #3: Resource Modal Auto-Open for AI-Generated Skills ✅ RESOLVED (2025-10-19)
+**Description**: Resource upload modal opened automatically for pasted skills but NOT for AI-generated skills
+**Root Cause**: `onSaveSuccess` callback not passing skill data back to parent component
+**Expected Behavior**: Modal should open automatically after saving ANY skill (AI or pasted)
+
+**Impact**: Inconsistent user experience - users had to manually navigate to upload resources for AI-generated skills
+
+**Resolution**: Enhanced callback chain to pass skill information from SkillEditorModal to FileTree
+
+**Implementation Details**:
+
+1. **Modified SkillEditorModal.tsx** (lines 17-25, 149-156):
+   - Updated `onSaveSuccess` prop type to accept optional data parameter
+   - Modified save handler to pass skill name and paths through callback
+
+2. **Modified FileTree.tsx** (lines 31, 85-89, 772-781, 795-802):
+   - Added state variables for resource modal (skillName, resourcesPath)
+   - Updated callback handler to receive and process skill data
+   - Implemented automatic modal opening logic
+   - Connected SkillResourceModal to new state
+
+**Workflow Now**:
+```
+User creates skill (AI or paste)
+    ↓
+Edits/reviews content in SkillEditorModal
+    ↓
+Clicks "Save Skill"
+    ↓
+Content saved to filesystem
+    ↓
+onSaveSuccess({ name, skillPath, resourcesPath })
+    ↓
+FileTree receives data
+    ↓
+SkillResourceModal opens automatically ✅
+    ↓
+User uploads resources immediately
+```
+
+**Status**: ✅ RESOLVED
+**Documented**:
+- `docs/TROUBLESHOOTING.md` (Skills Management Issues section)
+- `docs/SKILLS-WORKFLOW.md` (Complete workflow documentation with diagrams)
+
+---
+
+### Documentation Created
+
+#### New Documentation Files
+1. **docs/TROUBLESHOOTING.md** (New file - 400+ lines)
+   - Comprehensive troubleshooting guide
+   - WebSocket configuration issues
+   - Skills Management fixes
+   - API endpoint debugging
+   - Quick reference port configurations
+   - Recent fixes log
+
+2. **docs/SKILLS-WORKFLOW.md** (New file - 500+ lines)
+   - Complete Skills Management workflow documentation
+   - Detailed workflow diagrams
+   - Recent improvements documentation
+   - Component architecture diagrams
+   - Data flow visualizations
+   - API endpoint specifications
+   - User guide with best practices
+   - Testing checklist
+   - Future enhancements roadmap
+
+#### Documentation Updates
+- **PROGRESS.md**: Updated with new session fixes (current update)
+
+---
+
+### Session Summary (2025-10-19)
+
+**Agent**: Documentation Agent
+**Duration**: 1 hour
+**Focus**: Document critical fixes from development team
+
+**Achievements**:
+- ✅ Documented 3 critical fixes completed today
+- ✅ Created comprehensive TROUBLESHOOTING.md guide
+- ✅ Created detailed SKILLS-WORKFLOW.md documentation
+- ✅ Updated PROGRESS.md with session details
+- ✅ Total documentation: 900+ lines across 2 new files
+
+**Files Modified/Created**:
+- `docs/TROUBLESHOOTING.md` (new - 400+ lines)
+- `docs/SKILLS-WORKFLOW.md` (new - 500+ lines)
+- `PROGRESS.md` (updated - this section)
+
+**Impact**:
+- Future developers have clear troubleshooting steps
+- WebSocket configuration issues documented with solutions
+- Skills workflow completely documented with diagrams
+- All recent fixes logged with before/after code examples
+
+**Next Actions**:
+- Monitor for additional fixes that need documentation
+- Update API documentation when new endpoints are added
+- Keep TROUBLESHOOTING.md updated with new issues/solutions
+
+---
